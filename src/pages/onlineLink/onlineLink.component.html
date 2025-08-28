@@ -1,0 +1,47 @@
+<div class="flex w-full flex-col">
+  <ul class="steps w-full">
+    <li class="step" [ngClass]="{ 'step-primary': stepState >= 0 }">Start</li>
+    <li class="step" [ngClass]="{ 'step-primary': stepState >= 1 }">Connect Celio Device</li>
+    <li class="step" [ngClass]="{ 'step-primary': stepState >= 2 }">Create/Join Session</li>
+    <li class="step" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait for Partner</li>
+    <li class="step" [ngClass]="{ 'step-primary': stepState >= 4 }" >Start Link Mode</li>
+    <li class="step" [ngClass]="{ 'step-primary': stepState >= 5 }">Ready</li>
+  </ul>
+
+  <div class="divider"></div>
+
+  <div class="flex w-full h-[10rem]">
+    <div *ngIf="!linkDeviceConnected" class="card rounded-box grid h-20 grow place-items-center">
+      <button (click)="connect()" class="btn btn-lg">Connect Celio Device</button>
+    </div>
+    <div *ngIf="linkDeviceConnected" class="card rounded-box grid h-20 grow place-items-center">
+      Connected
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div *ngIf="sessionId === undefined" class="flex w-full h-[10rem]">
+    <div class="card rounded-box grid h-20 grow place-items-center">
+      <button (click)="createSession()" class="btn btn-lg">Create Session</button>
+    </div>
+    <div class="divider divider-horizontal">OR</div>
+    <div class="card rounded-box grid h-20 grow place-items-center">
+      <input (keydown.enter)="joinSession()" type="text" placeholder="Enter Session Id" class="input" />
+    </div>
+  </div>
+  <div *ngIf="false" class="flex w-full h-[10rem]">
+    <div class="card rounded-box grid h-20 grow place-items-center">
+      Session is go
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="flex w-full h-[10rem]">
+    <div class="card rounded-box grid h-20 grow place-items-center">
+      <button (click)="enableLinkMode()" class="btn btn-lg">Start</button>
+    </div>
+  </div>
+  <div class="divider"></div>
+</div>

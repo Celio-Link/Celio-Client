@@ -1,0 +1,21 @@
+<div class="flex h-screen justify-center bg-base-200">
+  <ul class="menu bg-base-200 rounded-box p-4 w-64 h-[40vh] w-[15vh]">
+    <li class="flex-1">
+      <a routerLink="/onlineLink" class="btn btn-square btn-lg w-full h-full" routerLinkActive="btn-disabled" [routerLinkActiveOptions]="{ exact: true }">
+        <div class="w-24 rounded">
+          <img ngSrc="icons/onlinePlay.png" fill/>
+        </div>
+      </a>
+    </li>
+    <li class="flex-1">
+      <a routerLink="/tradeEmu" class="btn btn-square btn-lg w-full h-full" routerLinkActive="btn-disabled" [routerLinkActiveOptions]="{ exact: true }">
+        Emu
+      </a>
+    </li>
+    <li class="flex-1">
+      <a routerLink="/contact" class="btn btn-square btn-lg w-full h-full" routerLinkActive="btn-disabled" [routerLinkActiveOptions]="{ exact: true }">
+        Settings
+      </a>
+    </li>
+  </ul>
+</div>

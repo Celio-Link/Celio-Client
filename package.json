@@ -28,6 +28,9 @@
     "@angular/forms": "^20.1.0",
     "@angular/platform-browser": "^20.1.0",
     "@angular/router": "^20.1.0",
+    "@tailwindcss/postcss": "^4.1.12",
+    "@tailwindcss/vite": "^4.1.12",
+    "@types/w3c-web-usb": "^1.0.10",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
@@ -37,12 +40,22 @@
     "@angular/cli": "^20.1.6",
     "@angular/compiler-cli": "^20.1.0",
     "@types/jasmine": "~5.1.0",
+    "autoprefixer": "^10.4.21",
+    "daisyui": "^5.0.50",
     "jasmine-core": "~5.8.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.12",
     "typescript": "~5.8.2"
-  }
+  },
+  "description": "This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.1.6.",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
 }
