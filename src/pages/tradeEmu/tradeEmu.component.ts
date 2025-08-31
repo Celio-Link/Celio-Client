@@ -1,6 +1,16 @@
-import {Component, inject} from '@angular/core';
+import {Component, inject, ChangeDetectorRef} from '@angular/core';
 import {NgClass, NgForOf, NgIf} from '@angular/common';
-import {DataArray, LinkDeviceService} from '../../services/linkdevice.service';
+import {CommandType, DataArray, LinkDeviceService, Mode} from '../../services/linkdevice.service';
+import {Subscription} from 'rxjs';
+
+enum StepsState {
+  Start = 0,
+  ConnectedCelioDevice = 1,
+  SessionJoined = 2,
+  PartnerResponded = 3,
+  LinkModeSet = 4,
+  Ready = 5
+}
 
 @Component({
   selector: 'app-tradeEmu',
@@ -16,15 +26,40 @@ export class TradeEmuComponent {
   private linkDeviceService = inject(LinkDeviceService)
   protected linkDeviceConnected = false;
 
-  protected stepState = 0
+  protected stepState: StepsState = StepsState.Start
 
   protected pkmFiles: File[] = [];
+
+  private disconnectSubscription: Subscription;
+  private statusSubscription: Subscription
+
+  constructor(private cd: ChangeDetectorRef) {
+    this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(disconnect => {
+      this.linkDeviceConnected = false;
+      this.stepState = StepsState.Start;
+      this.cd.detectChanges();
+    })
+
+    this.statusSubscription = this.linkDeviceService.statusEvents$.subscribe(statusEvents => {
+      //this.handleLinkDeviceStatus(statusEvents);
+    });
+  }
+
+  ngOnInit() {
+    this.linkDeviceConnected = this.linkDeviceService.isConnected()
+  }
+
+  ngOnDestroy() {
+    this.disconnectSubscription.unsubscribe();
+    this.statusSubscription.unsubscribe();
+  }
 
   connect(): void {
     this.linkDeviceService.connectDevice()
       .then(isConnected => {
           this.linkDeviceConnected = isConnected
           if (isConnected) {
+            this.stepState = StepsState.ConnectedCelioDevice;
           }
         }
       )
@@ -38,13 +73,26 @@ export class TradeEmuComponent {
     }
   }
 
-  upload()
-  {
-    this.pkmFiles.forEach(async(file: File) => {
-      const blob = await file.bytes()
-      await this.linkDeviceService.sendDataRaw(blob.slice(0, 49))
-      await this.linkDeviceService.sendDataRaw(blob.slice(50, 100))
-    })
+  async enableTradeMode():Promise<boolean> {
+    //this.stepState = StepsState.LinkModeSet
+    let args: Uint8Array = new Uint8Array(1);
+    args[0] = Mode.tradeEmu;
+    return this.linkDeviceService.sendCommand(CommandType.SetMode, args);
   }
 
+  async upload()
+  {
+    let success: boolean = await this.enableTradeMode();
+    if (!success) return;
+    for (const file of this.pkmFiles) {
+      const blob = await file.arrayBuffer()
+      const bytes = new Uint8Array(blob);
+      await this.linkDeviceService.sendDataRaw(bytes.slice(0, 50))
+      await this.linkDeviceService.sendDataRaw(bytes.slice(50))
+    }
+  }
+
+  remove(index: number) {
+    this.pkmFiles = this.pkmFiles.filter((_, i) => i !== index);
+  }
 }

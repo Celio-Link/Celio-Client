@@ -44,6 +44,7 @@ export class OnlineLinkComponent {
 
   private dataSubscription: Subscription
   private statusSubscription: Subscription
+  private disconnectSubscription: Subscription
 
   constructor() {
     this.statusSubscription = this.linkDeviceService.statusEvents$.subscribe(statusEvents => {
@@ -53,6 +54,8 @@ export class OnlineLinkComponent {
     this.dataSubscription = this.linkDeviceService.dataEvents$.subscribe(data => {
       this.handleLinkDeviceData(data);
     });
+
+    this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(disconnect => {})
   }
 
   ngOnInit() {
@@ -86,6 +89,7 @@ export class OnlineLinkComponent {
   ngOnDestroy() {
     this.dataSubscription.unsubscribe();
     this.statusSubscription.unsubscribe();
+    this.disconnectSubscription.unsubscribe();
   }
 
   connect(): void {

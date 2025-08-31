@@ -56,8 +56,16 @@ export class LinkDeviceService {
   private dataEventSubject = new Subject<DataArray>();
   public dataEvents$ = this.dataEventSubject.asObservable();
 
+  private disconnectEventSubject = new Subject<void>();
+  public disconnectEvents$ = this.disconnectEventSubject.asObservable();
 
-  constructor() {}
+  constructor() {
+    navigator.usb.ondisconnect = event => {
+      console.log("USB device disconnected:", event.device);
+      this.device = undefined;
+      this.disconnectEventSubject.next()
+    };
+  }
 
   isConnected(): boolean { return this.device != undefined; }
 
@@ -113,23 +121,27 @@ export class LinkDeviceService {
   async sendDataRaw(data: Uint8Array): Promise<boolean> {
     if (data.length > 64) return false;
     try {
-      const uint16Array = new Uint16Array(data);
       const result: USBOutTransferResult =
-        await this.device!.transferOut(this.dataEndpoint, uint16Array);
-      console.log(result);
+        await this.device!.transferOut(this.dataEndpoint, data);
+      console.log("Send raw data to device result: " + result);
       return true;
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
       return false;
     }
   }
 
-  sendCommand(command: CommandType, args: Uint8Array = new Uint8Array(0)) {
+  async sendCommand(command: CommandType, args: Uint8Array = new Uint8Array(0)): Promise<boolean> {
     let message: Uint8Array<ArrayBuffer> = new Uint8Array(1 + args.length);
     message[0] = command;
     message.set(args, 1)
-    this.device!.transferOut(this.statusEndpoint, message).then(
-      (result: USBOutTransferResult) => {console.log(result)},
-      (err: Error) => {console.log(err)})
+    try {
+      const result: USBOutTransferResult = await this.device!.transferOut(this.statusEndpoint, message);
+      console.log("Send Command to device result :" + result);
+      return true;
+    } catch (error) {
+      console.error(error);
+      return false;
+    }
   }
 }
