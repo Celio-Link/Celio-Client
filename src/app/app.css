@@ -1,2 +1,24 @@
 @tailwind utilities;
 @plugin "daisyui";
+
+@font-face {
+  font-family: 'Gen3';
+  src: url('/fonts/pokemon-emerald.ttf') format('truetype');
+  font-weight: 200;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-Gen3: "Gen3", sans-serif;
+}
+
+@utility btn {
+  font-weight: 100;
+}
+
+@layer components {
+  .btn {
+    @apply normal-case; /* removes uppercase */
+  }
+}

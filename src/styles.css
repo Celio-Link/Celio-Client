@@ -1,6 +1,23 @@
-/* You can add global styles to this file, and also import other style files */
+@import "tailwindcss"; /* You can add global styles to this file, and also import other style files */
 @tailwind utilities;
-@import "tailwindcss";
 @plugin "daisyui" {
   themes: all;
+}
+
+@font-face {
+  font-family: 'Gen3';
+  src: url('/fonts/pokemon-emerald.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-Gen3: "Gen3", sans-serif;
+}
+
+@utility btn {
+  font-weight: 100;
+  font-family: 'Gen3', serif;
+  @apply text-3xl;
 }

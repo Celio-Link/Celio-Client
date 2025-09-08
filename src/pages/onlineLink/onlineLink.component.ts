@@ -1,8 +1,11 @@
-import {Component, inject} from '@angular/core';
-import {NgClass, NgIf} from '@angular/common';
+import { Component, inject } from '@angular/core';
+import { NgClass, NgIf } from '@angular/common';
+import { Result } from 'true-myth/';
 
-import {CommandType, DataArray, LinkDeviceService, LinkStatus, Mode} from '../../services/linkdevice.service';
-import {Client, ClientStatus} from '../../client/client'
+import { CommandType, DataArray, LinkDeviceService, LinkStatus, Mode } from '../../services/linkdevice.service';
+import { io, Socket } from "socket.io-client";
+
+
 import {
   CommandMessage,
   JoinMessage,
@@ -13,12 +16,16 @@ import {
 import {Subscription} from 'rxjs';
 
 enum StepsState {
-  Start = 0,
-  ConnectedCelioDevice = 1,
-  SessionJoined = 2,
-  PartnerResponded = 3,
-  LinkModeSet = 4,
-  Ready = 5
+  ConnectedCelioDevice = 0,
+  SessionJoined = 1,
+  PartnerResponded = 2,
+  LinkModeSet = 3,
+  Ready = 4
+}
+
+enum ErrorType {
+  NotFound = "Not Found",
+  AlreadyExists = "AlreadyExists"
 }
 
 @Component({
@@ -35,16 +42,66 @@ export class OnlineLinkComponent {
   protected linkDeviceConnected = false;
 
   private joinMessage: SessionCreationMessage | JoinMessage | undefined = undefined;
-  private client = new Client('wss://server-production-e17f.up.railway.app')
+
+  private socket: Socket = io('wss://server-production-e17f.up.railway.app', {
+    transports: ["websocket"],
+    autoConnect: false,
+    retries: 4,
+    reconnectionAttempts: 4,
+    reconnectionDelay: 100,
+    reconnectionDelayMax: 1000,
+    timeout: 5000,
+  });
   protected sessionId: string | undefined = undefined;
 
-  protected stepState: StepsState = StepsState.Start
+  protected isInvisible: boolean = true;
+
+  toggle() { this.isInvisible = !this.isInvisible; }
+
+  protected stepState: StepsState = StepsState.ConnectedCelioDevice;
 
   private queue: DataArray[] = [];
 
   private dataSubscription: Subscription
   private statusSubscription: Subscription
   private disconnectSubscription: Subscription
+
+  private socketEventHandlers = {
+
+    partnerJoined: () => {
+      console.log("Partner is ready");
+      this.stepState = StepsState.PartnerResponded
+    },
+
+    deviceCommand: (commandType: CommandType) => {
+      this.linkDeviceService.sendCommand(commandType);
+      console.log('Server has send device command: ' + CommandType[commandType]);
+    },
+
+    deviceData: (data: Blob) => {
+      data.arrayBuffer().then(buffer => {
+        const array = new Uint16Array(buffer, 0, 8);
+        const dataArray = Array.from(array) as DataArray;
+        this.queue.push(dataArray)
+      })
+    },
+
+    connect: () => {
+      switch(this.joinMessage!.type) {
+        case "sessionCreate":
+          this.socket.emit("sessionCreate", this.joinMessage!, this.sessionEnterCallback);
+          break;
+        case 'sessionJoin':
+          this.socket.emit("sessionJoin", this.joinMessage!, this.sessionEnterCallback);
+          break;
+      }
+    },
+
+    error: (reason: string) => {
+
+    }
+
+  };
 
   constructor() {
     this.statusSubscription = this.linkDeviceService.statusEvents$.subscribe(statusEvents => {
@@ -55,34 +112,19 @@ export class OnlineLinkComponent {
       this.handleLinkDeviceData(data);
     });
 
-    this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(disconnect => {})
+    this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(disconnect => {
+      this.stepState = StepsState.ConnectedCelioDevice;
+      if (this.socket.connected) {
+        this.socket.disconnect();
+      }
+    })
   }
 
   ngOnInit() {
-    this.linkDeviceConnected = this.linkDeviceService.isConnected()
+    this.linkDeviceConnected = this.linkDeviceService.isConnected();
 
-    this.client.bind('sessionJoined', (message: SessionJoinedMessage) => {
-      console.log("Session created with id: " + message.sessionId);
-      this.sessionId = message.sessionId;
-      this.stepState = StepsState.SessionJoined
-    });
-
-    this.client.bind('partnerReady', (message: SessionPartnerReady) => {
-      console.log("Partner is ready");
-      this.stepState = StepsState.PartnerResponded
-    });
-
-    this.client.bind('command', (message: CommandMessage) => {
-      this.linkDeviceService.sendCommand(message.commandType);
-      console.log('Server has send command: ' + CommandType[message.commandType]);
-    });
-
-    this.client.bind('data', (data: Blob) => {
-      data.arrayBuffer().then(buffer => {
-        const array = new Uint16Array(buffer, 0, 8);
-        const dataArray = Array.from(array) as DataArray;
-        this.queue.push(dataArray)
-      })
+    Object.entries(this.socketEventHandlers).forEach(([event, handler]) => {
+      this.socket.on(event, handler);
     });
   }
 
@@ -90,34 +132,44 @@ export class OnlineLinkComponent {
     this.dataSubscription.unsubscribe();
     this.statusSubscription.unsubscribe();
     this.disconnectSubscription.unsubscribe();
+
+    Object.entries(this.socketEventHandlers).forEach(([event, handler]) => {
+      this.socket.off(event, handler);
+    });
   }
 
   connect(): void {
-      this.linkDeviceService.connectDevice()
-        .then(isConnected => {
-          this.linkDeviceConnected = isConnected
-          if (isConnected) {
-            this.stepState = StepsState.ConnectedCelioDevice
-          }
-        }
-      )
-  }
+    this.stepState = StepsState.SessionJoined
 
-  clientState(status: ClientStatus): void {
-      switch (status) {
-        case ClientStatus.Open:
-          this.client?.send(JSON.stringify(this.joinMessage));
+    this.linkDeviceService.connectDevice()
+      .then(isConnected => {
+        this.linkDeviceConnected = isConnected
+        if (isConnected) {
+          this.stepState = StepsState.SessionJoined
+        }
       }
+    )
   }
 
   createSession() {
       this.joinMessage = { type: 'sessionCreate' };
-      this.client.connect(this.clientState.bind(this));
+      this.socket.connect();
   }
 
   joinSession() {
     this.joinMessage = { type: 'sessionJoin', id: 'test' };
-    this.client.connect(this.clientState.bind(this));
+    this.socket.connect();
+  }
+
+  private sessionEnterCallback(result: Result<string, ErrorType>): void {
+    if (result.isOk) {
+      this.stepState = StepsState.SessionJoined;
+    } else {
+      switch(result.error) {
+        case ErrorType.AlreadyExists:
+        case ErrorType.NotFound:
+      }
+    }
   }
 
   handleLinkDeviceData(data: DataArray) {
@@ -128,7 +180,7 @@ export class OnlineLinkComponent {
     }
     if (data[0] == 0x00) return;
     if ((data[0] == 0xCAFE) && (data[1] == 0x11)) return;
-    this.client.sendBinary(data);
+    this.socket.emit('deviceData', data);
     console.log("Received data from Link device " + data.toString())
   }
 
@@ -137,7 +189,7 @@ export class OnlineLinkComponent {
       this.stepState = StepsState.Ready
     }
     const message: StatusMessage = { type: 'status', statusType: status };
-    this.client.send(JSON.stringify({ message }));
+    this.socket.emit('deviceStatus', JSON.stringify({ message }));
   }
 
   enableLinkMode() {

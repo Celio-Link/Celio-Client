@@ -1,47 +1,98 @@
 <div class="flex w-full flex-col">
   <ul class="steps w-full">
-    <li class="step" [ngClass]="{ 'step-primary': stepState >= 0 }">Start</li>
-    <li class="step" [ngClass]="{ 'step-primary': stepState >= 1 }">Connect Celio Device</li>
-    <li class="step" [ngClass]="{ 'step-primary': stepState >= 2 }">Create/Join Session</li>
-    <li class="step" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait for Partner</li>
-    <li class="step" [ngClass]="{ 'step-primary': stepState >= 4 }" >Start Link Mode</li>
-    <li class="step" [ngClass]="{ 'step-primary': stepState >= 5 }">Ready</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect Celio Device</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Join Session</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Wait for Partner</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Start Link Mode</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Ready</li>
   </ul>
 
   <div class="divider"></div>
 
   <div class="flex w-full h-[10rem]">
-    <div *ngIf="!linkDeviceConnected" class="card rounded-box grid h-20 grow place-items-center">
+    <div *ngIf="!linkDeviceConnected" class="card rounded-box grid grow place-items-center">
       <button (click)="connect()" class="btn btn-lg">Connect Celio Device</button>
     </div>
-    <div *ngIf="linkDeviceConnected" class="card rounded-box grid h-20 grow place-items-center">
+    <div *ngIf="linkDeviceConnected" class="card rounded-box grid grow place-items-center">
       Connected
     </div>
   </div>
 
   <div class="divider"></div>
 
-  <div *ngIf="sessionId === undefined" class="flex w-full h-[10rem]">
-    <div class="card rounded-box grid h-20 grow place-items-center">
-      <button (click)="createSession()" class="btn btn-lg">Create Session</button>
+  <div [class.opacity-0]="!(stepState >= 0)" [class.opacity-100]="stepState >= 0" class="transition-opacity duration-500 ease-in-out">
+    <div *ngIf="sessionId === undefined" class="flex w-full h-[10rem] ">
+      <div class="card rounded-box grid grow place-items-center">
+        <button (click)="createSession()" class="btn btn-lg">Create Session</button>
+      </div>
+      <div class="divider divider-horizontal"><div class="font-Gen3 text-4xl">OR</div></div>
+      <div class="card rounded-box grid grow place-items-center">
+        <input (keydown.enter)="joinSession()" type="text" placeholder="Enter Session Id" class="input" />
+      </div>
     </div>
-    <div class="divider divider-horizontal">OR</div>
-    <div class="card rounded-box grid h-20 grow place-items-center">
-      <input (keydown.enter)="joinSession()" type="text" placeholder="Enter Session Id" class="input" />
+    <div *ngIf="false" class="flex w-full h-[10rem]">
+      <div class="card rounded-box grid h-20 grow place-items-center">
+        Session is go
+      </div>
     </div>
+
+    <div class="divider"></div>
   </div>
-  <div *ngIf="false" class="flex w-full h-[10rem]">
-    <div class="card rounded-box grid h-20 grow place-items-center">
-      Session is go
+
+  <style>
+    @keyframes dots {
+      0%   { content: "."; }
+      25%  { content: ".."; }
+      50%  { content: "..."; }
+      75%  { content: ""; }
+      100% { content: "."; }
+    }
+
+    .waiting .dots::after {
+      content: ".";
+      animation: dots 2s steps(1, end) infinite;
+    }
+
+    .waiting .dots {
+      display: inline-block;
+      width: 2ch;       /* enough for three dots */
+      text-align: left; /* keep dots aligned */
+    }
+  </style>
+
+  <div [class.opacity-0]="!(stepState >= 0)" [class.opacity-100]="stepState >= 0" class="transition-opacity duration-500 ease-in-out">
+    <div class="flex items-center justify-center h-25">
+      <div class="flex place-items-center">
+        <p class="font-Gen3 text-4xl waiting">
+          Waiting for Partner<span class="dots"></span>
+        </p>
+      </div>
+    </div>
+    <div class="divider"></div>
     </div>
   </div>
 
-  <div class="divider"></div>
-
-  <div class="flex w-full h-[10rem]">
-    <div class="card rounded-box grid h-20 grow place-items-center">
-      <button (click)="enableLinkMode()" class="btn btn-lg">Start</button>
+  <div [ngClass]="{ 'invisible': !(stepState >= 3) }">
+    <div class="flex w-full h-[10rem]">
+      <div class="card rounded-box grid h-20 grow place-items-center">
+        <button (click)="enableLinkMode()" class="btn btn-lg">Start</button>
+      </div>
     </div>
+    <div class="divider"></div>
   </div>
-  <div class="divider"></div>
+
+<div
+  *ngIf="isInvisible"
+  class="transition-opacity duration-500 ease-in-out opacity-0"
+  [class.opacity-100]="isInvisible">
+  <h2 class="text-xl">I fade in and out!</h2>
+  <p>This whole block will fade.</p>
 </div>
+
+
+<div class="toast">
+  <div class="alert alert-error">
+    <span>New message arrived.</span>
+  </div>
+</div>
+
