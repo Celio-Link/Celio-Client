@@ -1,6 +1,6 @@
-import { Component, inject } from '@angular/core';
+import {ChangeDetectorRef, Component, HostListener, inject} from '@angular/core';
 import { NgClass, NgIf } from '@angular/common';
-import { Result } from 'true-myth/';
+import { Result } from 'true-myth';
 
 import { CommandType, DataArray, LinkDeviceService, LinkStatus, Mode } from '../../services/linkdevice.service';
 import { io, Socket } from "socket.io-client";
@@ -16,16 +16,21 @@ import {
 import {Subscription} from 'rxjs';
 
 enum StepsState {
-  ConnectedCelioDevice = 0,
-  SessionJoined = 1,
-  PartnerResponded = 2,
-  LinkModeSet = 3,
+  ConnectingCelioDevice = 0,
+  JoiningSession = 1,
+  WaitingForPartner = 2,
+  SettingLinkMode = 3,
   Ready = 4
 }
 
 enum ErrorType {
   NotFound = "Not Found",
   AlreadyExists = "AlreadyExists"
+}
+
+interface SessionState {
+  id: string;
+  full: boolean;
 }
 
 @Component({
@@ -39,26 +44,21 @@ enum ErrorType {
 })
 export class OnlineLinkComponent {
   private linkDeviceService = inject(LinkDeviceService)
-  protected linkDeviceConnected = false;
 
   private joinMessage: SessionCreationMessage | JoinMessage | undefined = undefined;
 
-  private socket: Socket = io('wss://server-production-e17f.up.railway.app', {
+  private socket: Socket = io('ws://localhost:8080', {
     transports: ["websocket"],
-    autoConnect: false,
-    retries: 4,
+    autoConnect: true,
     reconnectionAttempts: 4,
     reconnectionDelay: 100,
     reconnectionDelayMax: 1000,
     timeout: 5000,
   });
-  protected sessionId: string | undefined = undefined;
+  protected sessionId: string | undefined = "test";
 
-  protected isInvisible: boolean = true;
-
-  toggle() { this.isInvisible = !this.isInvisible; }
-
-  protected stepState: StepsState = StepsState.ConnectedCelioDevice;
+  protected stepState: StepsState = StepsState.ConnectingCelioDevice;
+  protected StepsState = StepsState;
 
   private queue: DataArray[] = [];
 
@@ -69,8 +69,13 @@ export class OnlineLinkComponent {
   private socketEventHandlers = {
 
     partnerJoined: () => {
-      console.log("Partner is ready");
-      this.stepState = StepsState.PartnerResponded
+      console.log("Partner joined session");
+      this.advanceLinkState(StepsState.SettingLinkMode);
+    },
+
+    partnerLeft: () => {
+      console.log("Partner left session");
+      this.advanceLinkState(StepsState.WaitingForPartner);
     },
 
     deviceCommand: (commandType: CommandType) => {
@@ -87,23 +92,11 @@ export class OnlineLinkComponent {
     },
 
     connect: () => {
-      switch(this.joinMessage!.type) {
-        case "sessionCreate":
-          this.socket.emit("sessionCreate", this.joinMessage!, this.sessionEnterCallback);
-          break;
-        case 'sessionJoin':
-          this.socket.emit("sessionJoin", this.joinMessage!, this.sessionEnterCallback);
-          break;
-      }
+      console.log("Connected to Server")
     },
-
-    error: (reason: string) => {
-
-    }
-
   };
 
-  constructor() {
+  constructor(private cd: ChangeDetectorRef) {
     this.statusSubscription = this.linkDeviceService.statusEvents$.subscribe(statusEvents => {
       this.handleLinkDeviceStatus(statusEvents);
     });
@@ -113,7 +106,7 @@ export class OnlineLinkComponent {
     });
 
     this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(disconnect => {
-      this.stepState = StepsState.ConnectedCelioDevice;
+      this.advanceLinkState(StepsState.ConnectingCelioDevice);
       if (this.socket.connected) {
         this.socket.disconnect();
       }
@@ -121,7 +114,9 @@ export class OnlineLinkComponent {
   }
 
   ngOnInit() {
-    this.linkDeviceConnected = this.linkDeviceService.isConnected();
+    if (this.linkDeviceService.isConnected()) {
+      this.advanceLinkState(StepsState.JoiningSession);
+    }
 
     Object.entries(this.socketEventHandlers).forEach(([event, handler]) => {
       this.socket.on(event, handler);
@@ -139,31 +134,53 @@ export class OnlineLinkComponent {
   }
 
   connect(): void {
-    this.stepState = StepsState.SessionJoined
-
     this.linkDeviceService.connectDevice()
       .then(isConnected => {
-        this.linkDeviceConnected = isConnected
         if (isConnected) {
-          this.stepState = StepsState.SessionJoined
+          this.advanceLinkState(StepsState.JoiningSession);
         }
       }
     )
   }
 
+  private reviveResult<T, E>(raw: any): Result<T, E> {
+    if (raw && raw.variant === "Ok") return Result.ok(raw.value as T);
+    if (raw && raw.variant === "Err") return Result.err(raw.error as E);
+    throw new Error("Not a valid Result");
+  }
+
   createSession() {
       this.joinMessage = { type: 'sessionCreate' };
-      this.socket.connect();
+      this.socket.emit("sessionCreate",
+        this.joinMessage!,
+        (raw: any) => this.sessionEnterCallback(this.reviveResult(raw))
+      );
   }
 
-  joinSession() {
-    this.joinMessage = { type: 'sessionJoin', id: 'test' };
-    this.socket.connect();
+  joinSession(sessionId: string) {
+    this.joinMessage = { type: 'sessionJoin', id: sessionId };
+    this.socket.emit(
+      "sessionJoin",
+      this.joinMessage!,
+      (raw: any) => this.sessionEnterCallback(this.reviveResult(raw))
+    );
   }
 
-  private sessionEnterCallback(result: Result<string, ErrorType>): void {
+  leaveSession() {
+    this.socket.emit("sessionLeft");
+    this.advanceLinkState(StepsState.JoiningSession);
+  }
+
+  private sessionEnterCallback(result: Result<SessionState, ErrorType>): void {
+    console.log(JSON.stringify(result));
     if (result.isOk) {
-      this.stepState = StepsState.SessionJoined;
+      console.log('yes');
+      this.sessionId = result.value.id;
+      if (result.value.full) {
+        this.advanceLinkState(StepsState.SettingLinkMode);
+      } else {
+        this.advanceLinkState(StepsState.WaitingForPartner);
+      }
     } else {
       switch(result.error) {
         case ErrorType.AlreadyExists:
@@ -185,17 +202,44 @@ export class OnlineLinkComponent {
   }
 
   handleLinkDeviceStatus(status: LinkStatus) {
-    if (status === LinkStatus.HandshakeWaiting) {
-      this.stepState = StepsState.Ready
+    if (status === LinkStatus.DeviceReady && this.stepState === StepsState.SettingLinkMode) {
+      this.advanceLinkState(StepsState.Ready);
     }
     const message: StatusMessage = { type: 'status', statusType: status };
-    this.socket.emit('deviceStatus', JSON.stringify({ message }));
+    this.socket.emit('deviceStatus', message);
   }
 
   enableLinkMode() {
-    this.stepState = StepsState.LinkModeSet
     let args: Uint8Array = new Uint8Array(1);
     args[0] = Mode.onlineLink;
     this.linkDeviceService.sendCommand(CommandType.SetMode, args);
+  }
+
+  protected hasReached(step: StepsState): boolean {
+    return this.stepState >= step;
+  }
+
+  protected yetToReach(step: StepsState): boolean {
+    return this.stepState < step;
+  }
+
+  protected isCurrentlyIn(step: StepsState): boolean {
+    return this.stepState == step
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  protected handleKeyboardEvent(event: KeyboardEvent) {
+    if (event.key === 'ArrowUp') {
+      this.stepState++;
+    }
+
+    if (event.key === 'ArrowDown') {
+      this.stepState--;
+    }
+  }
+
+  private advanceLinkState(step: StepsState) {
+    this.stepState = step;
+    this.cd.detectChanges();
   }
 }

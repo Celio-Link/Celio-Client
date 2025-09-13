@@ -17,6 +17,8 @@ export enum LinkStatus {
   LinkReconnecting = 0xFF06,
   LinkClosed = 0xFF07,
 
+  DeviceReady = 0xFF08,
+
   StatusDebug = 0xFFFF
 }
 

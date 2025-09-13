@@ -1,7 +1,42 @@
 @import "tailwindcss"; /* You can add global styles to this file, and also import other style files */
 @tailwind utilities;
-@plugin "daisyui" {
-  themes: all;
+@plugin "daisyui"{
+  themes: light --default, dark --prefersdark, emerald;
+}
+
+@plugin "daisyui/theme" {
+  name: "emerald";
+  default: false;
+  prefersdark: false;
+  color-scheme: "light";
+  --color-base-100: oklch(100% 0 0);
+  --color-base-200: oklch(93% 0 0);
+  --color-base-300: oklch(86% 0 0);
+  --color-base-content: oklch(35.519% 0.032 262.988);
+  --color-primary: #00ff9c;
+  --color-primary-content: oklch(33.387% 0.04 162.24);
+  --color-secondary: oklch(61.302% 0.202 261.294);
+  --color-secondary-content: oklch(100% 0 0);
+  --color-accent: oklch(72.772% 0.149 33.2);
+  --color-accent-content: oklch(0% 0 0);
+  --color-neutral: oklch(35.519% 0.032 262.988);
+  --color-neutral-content: oklch(98.462% 0.001 247.838);
+  --color-info: oklch(72.06% 0.191 231.6);
+  --color-info-content: oklch(0% 0 0);
+  --color-success: oklch(64.8% 0.15 160);
+  --color-success-content: oklch(0% 0 0);
+  --color-warning: oklch(84.71% 0.199 83.87);
+  --color-warning-content: oklch(0% 0 0);
+  --color-error: oklch(71.76% 0.221 22.18);
+  --color-error-content: oklch(0% 0 0);
+  --radius-selector: 1rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
 }
 
 @font-face {
@@ -20,4 +55,67 @@
   font-weight: 100;
   font-family: 'Gen3', serif;
   @apply text-3xl;
+}
+
+@utility step-warning {
+  + .step-warning:before,
+  &:after,
+  > .step-icon {
+    --step-bg: var(--color-warning) !important;
+    --step-fg: var(--color-warning-content) !important;
+  }
+}
+
+
+.box {
+  /* make sure it's a real box */
+  display: block;
+  box-sizing: border-box;
+
+  /* crisp pixels */
+  image-rendering: pixelated;
+
+  /* Border must have a style and widths that match your corner thicknesses */
+  border-style: solid;              /* IMPORTANT: not 'none' */
+  border-width: 20px 40px;          /* top/bottom 20, left/right 40 */
+
+  /* Border image pieces */
+  border-image-source: url("/assets/textbox.png");
+  border-image-slice: 20 40 20 40 fill; /* top right bottom left (+ fill center) */
+  border-image-repeat: repeat;           /* tile edges, don’t stretch */
+
+  /* content spacing */
+  padding: 10px;
+}
+
+@keyframes dots {
+  0%   { content: "."; }
+  25%  { content: ".."; }
+  50%  { content: "..."; }
+  75%  { content: ""; }
+  100% { content: "."; }
+}
+
+.waiting .dots::after {
+  content: ".";
+  animation: dots 2s steps(1, end) infinite;
+}
+
+.waiting .dots {
+  display: inline-block;
+  width: 2ch;       /* enough for three dots */
+  text-align: left; /* keep dots aligned */
+}
+
+@keyframes bob {
+  0%   { transform: translateY(0); }
+  20%  { transform: translateY(-1px); }
+  40%  { transform: translateY(-2px); }
+  60%  { transform: translateY(-1px); }
+  80%  { transform: translateY(0); }
+  100% { transform: translateY(0); } /* optional, ensures loop resets */
+}
+
+.animate-bob {
+  animation: bob 0.5s steps(1) infinite alternate;
 }
