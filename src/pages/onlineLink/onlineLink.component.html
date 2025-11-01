@@ -15,7 +15,7 @@
         <button (click)="connect()" class="btn btn-lg">Connect Celio Device</button>
       </div>
       <div *ngIf="hasReached(StepsState.JoiningSession)" class="font-Gen3 text-4xl">
-        Celio connection status: <br>
+        Celio USB connection status: <br>
         Ready!
       </div>
     </div>
@@ -76,5 +76,28 @@
         <img *ngIf="isCurrentlyIn(StepsState.SettingLinkMode)" src="/assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
       </div>
     </div>
+  </div>
+
+  <div *ngIf="hasReached(StepsState.Ready)"
+       class="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center transition-opacity duration-500 ease-in-out">
+
+    <div class="card rounded-box bg-white h-auto w-full max-w-screen-xl mx-auto flex flex-col items-center justify-between p-8 relative">
+
+
+      <div class="flex justify-between items-center w-full relative">
+        <img src="/assets/PC.png" class="image-pixelated h-48 w-auto relative ml-[8rem] bottom-1"/>
+        <div class="bg-black h-2 w-[100%] relative"></div>
+        <button (click)="createSession()" class="btn btn-lg btn-dash btn-error mt-8 relative bottom-4">
+          Disconnect
+        </button>
+        <div class="bg-black h-2 w-[100%] relative -mr-[12px]"></div>
+        <img src="/assets/GBA.png" class="image-pixelated h-48 w-auto relative mr-[8rem]"/>
+      </div>
+
+      <div class="box mt-12 font-Gen3 text-4xl">
+        Link Mode is now ready! If you haven't already, connect the <br>
+        Link-Cable to your Gameboy Advance and talk to the Pokémon Center clerk.
+      </div>
     </div>
+  </div>
 </div>

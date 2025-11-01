@@ -6,8 +6,6 @@ export type DataArray = [UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
 export type DataHandler = (data: DataArray) => void;
 
 export enum LinkStatus {
-  GameboyConnected = 0xFF00,
-  GameboyDisconnected = 0xFF01,
 
   HandshakeWaiting = 0xFF02,
   HandshakeReceived = 0xFF03,
@@ -24,6 +22,7 @@ export enum LinkStatus {
 
 export enum CommandType {
   SetMode = 0x00,
+  Cancel = 0x01,
   SetModeMaster = 0x10,
   SetModeSlave = 0x11,
   StartHandshake= 0x12,
@@ -145,5 +144,9 @@ export class LinkDeviceService {
       console.error(error);
       return false;
     }
+  }
+
+  disconnect() {
+    this.device!.close();
   }
 }

@@ -73,7 +73,7 @@
   box-sizing: border-box;
 
   /* crisp pixels */
-  image-rendering: pixelated;
+  /*image-rendering: pixelated;*/
 
   /* Border must have a style and widths that match your corner thicknesses */
   border-style: solid;              /* IMPORTANT: not 'none' */

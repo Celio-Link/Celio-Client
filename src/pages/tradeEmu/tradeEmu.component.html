@@ -1,54 +1,97 @@
 <div class="flex w-full flex-col">
   <ul class="steps w-full">
-    <li class="step" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect Celio Device</li>
-    <li class="step" [ngClass]="{ 'step-primary': stepState >= 1 }">Upload Pokémon</li>
-    <li class="step" [ngClass]="{ 'step-primary': stepState >= 2 }">Ready</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect Celio Device</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Selecting Pokémon</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Uploading Pokémon</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Ready</li>
   </ul>
 
   <div class="divider"></div>
 
-  <div class="flex w-full h-[10rem]">
-    <div *ngIf="!linkDeviceConnected" class="card rounded-box grid h-20 grow place-items-center">
-      <button (click)="connect()" class="btn btn-lg">Connect Celio Device</button>
+  <div class="box relative">
+    <div class="flex w-full h-[5rem]">
+      <div *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" class="card rounded-box grid grow place-items-center">
+        <button (click)="connect()" class="btn btn-lg">Connect Celio Device</button>
+      </div>
+      <div *ngIf="hasReached(StepsState.SelectingPokemon)" class="font-Gen3 text-4xl">
+        Celio connection status: <br>
+        Ready!
+      </div>
     </div>
-    <div *ngIf="linkDeviceConnected" class="card rounded-box grid h-20 grow place-items-center">
-      Connected
-    </div>
+    <img *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" src="/assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
   </div>
 
   <div class="divider"></div>
 
-  <div class="flex w-full h-[30rem]">
+  <div [class.opacity-0]="yetToReach(StepsState.SelectingPokemon)" [class.opacity-100]="hasReached(StepsState.SelectingPokemon)" class="transition-opacity duration-500 ease-in-out">
+    <div class="box relative">
 
-    <div class="grid h-[30rem] w-1/2 place-items-center">
-      <input type="file" accept=".ek3" class="file-input" (change)="slotSelected($event)" [disabled]="pkmFiles.length >= 6"/>
-    </div>
+      <div class="flex w-full h-[32rem]">
 
-    <div class="divider lg:divider-horizontal"></div>
-
-    <ul class="list bg-base-100 rounded-box shadow-md w-1/2">
-
-      <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Selected Pokémon</li>
-
-      <li class="list-row" *ngFor="let item of pkmFiles; let i = index">
-        <div><img class="size-10  rounded-box" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/249.png"/></div>
-        <div>
-          <div>Dio Lupa</div>
-          <div class="text-xs uppercase font-semibold opacity-60">{{item.name}}</div>
+        <div class="grid h-[30rem] w-2/5 place-items-center">
+          <input type="file" accept=".ek3, .pk3" class="file-input" (change)="slotSelected($event)" [disabled]="pkmFiles.length >= 6 || !isCurrentlyIn(StepsState.SelectingPokemon)"/>
+          <button *ngIf="pkmFiles.length >= 1 && isCurrentlyIn(StepsState.SelectingPokemon)" (click)="confirmSelection()" class="btn btn-lg absolute bottom-3 left-2">Confirm selection</button>
         </div>
-        <button (click)="remove(i)" class="btn btn-square btn-ghost">
-          <svg class="size-[1.2em]" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor"><path d="M6 3L20 12 6 21 6 3z"></path></g></svg>
-        </button>
-      </li>
 
-    </ul>
+        <div class="divider lg:divider-horizontal"></div>
+
+        <ul class="list bg-base-100 rounded-box shadow-md w-1/2">
+
+          <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Selected Pokémon</li>
+
+          <li class="list-row" *ngFor="let item of pkmFiles; let i = index">
+            <div><img class="size-12 rounded-box" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{{item?.pokemonId}}.png"/></div>
+            <div>
+              <div>{{item?.pokemonName}}</div>
+              <div class="text-xs uppercase font-semibold opacity-60">{{item.name}}</div>
+            </div>
+            <button (click)="remove(i)" class="btn btn-square btn-ghost" [disabled]="!isCurrentlyIn(StepsState.SelectingPokemon)">
+              <svg class="size-[1.2em]" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor"><path d="M6 6L18 18M6 18L18 6"></path></g></svg>
+            </button>
+          </li>
+
+        </ul>
+
+      </div>
+      <img *ngIf="isCurrentlyIn(StepsState.SelectingPokemon)" src="/assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+    </div>
+
+    <div class="divider"></div>
 
   </div>
 
 
-  <div class="divider"></div>
-  <div class="card rounded-box grid h-20 grow place-items-center">
-    <button (click)="upload()" class="btn btn-lg">Upload Pokémon</button>
+
+  <div [class.opacity-0]="yetToReach(StepsState.UploadingPokemon)" [class.opacity-100]="hasReached(StepsState.UploadingPokemon)" class="transition-opacity duration-500 ease-in-out">
+    <div class="box relative">
+      <div class="card rounded-box grid h-20 grow place-items-center">
+        <button (click)="upload()" class="btn btn-lg">Upload Pokémon</button>
+      </div>
+      <img *ngIf="isCurrentlyIn(StepsState.UploadingPokemon)" src="/assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+    </div>
+  </div>
+
+  <div *ngIf="hasReached(StepsState.Ready)"
+       class="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center transition-opacity duration-500 ease-in-out">
+
+    <div class="card rounded-box bg-white h-auto w-full max-w-screen-xl mx-auto flex flex-col items-center justify-between p-8 relative">
+
+
+      <div class="flex justify-between items-center w-full relative">
+        <img src="/assets/PC.png" class="image-pixelated h-48 w-auto relative ml-[8rem] bottom-1"/>
+        <div class="bg-black h-2 w-[100%] relative"></div>
+        <button (click)="upload()" class="btn btn-lg btn-dash btn-error mt-8 relative bottom-4">
+          Disconnect
+        </button>
+        <div class="bg-black h-2 w-[100%] relative -mr-[12px]"></div>
+        <img src="/assets/GBA.png" class="image-pixelated h-48 w-auto relative mr-[8rem]"/>
+      </div>
+
+      <div class="box mt-12 font-Gen3 text-4xl">
+        Link Mode is now ready! If you haven't already, connect the <br>
+        Link-Cable to your Gameboy Advance and talk to the Pokémon Center clerk.
+      </div>
+    </div>
   </div>
 
 </div>
