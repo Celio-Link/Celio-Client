@@ -1,4 +1,4 @@
-import {Component, inject, ChangeDetectorRef} from '@angular/core';
+import {Component, inject, ChangeDetectorRef, HostListener} from '@angular/core';
 import {NgClass, NgForOf, NgIf} from '@angular/common';
 import {CommandType, DataArray, LinkDeviceService, LinkStatus, Mode} from '../../services/linkdevice.service';
 import {Subscription} from 'rxjs';
@@ -37,11 +37,18 @@ export class TradeEmuComponent {
     this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(disconnect => {
       this.linkDeviceConnected = false;
       this.stepState = StepsState.ConnectingCelioDevice;
+      this.pkmFiles = [];
       this.cd.detectChanges();
     })
 
     this.statusSubscription = this.linkDeviceService.statusEvents$.subscribe(statusEvents => {
       console.log(statusEvents);
+      if (statusEvents === LinkStatus.EmuTradeSessionFinished) {
+        console.log("Trade session finished");
+        this.pkmFiles = [];
+        this.stepState = StepsState.SelectingPokemon;
+        this.cd.detectChanges();
+      }
     });
   }
 
@@ -49,14 +56,11 @@ export class TradeEmuComponent {
     if (this.linkDeviceService.isConnected()) {
       this.stepState = StepsState.SelectingPokemon;
     }
-
-    window.onbeforeunload = () => this.ngOnDestroy();
   }
 
   ngOnDestroy() {
     this.disconnectSubscription.unsubscribe();
     this.statusSubscription.unsubscribe();
-    this.linkDeviceService.disconnect()
   }
 
   connect(): void {
@@ -69,6 +73,13 @@ export class TradeEmuComponent {
           }
         }
       )
+  }
+
+  disconnect(): void {
+    this.linkDeviceService.sendCommand(CommandType.Cancel);
+    this.pkmFiles = [];
+    this.stepState = StepsState.SelectingPokemon;
+    this.cd.detectChanges();
   }
 
   slotSelected($event: Event) {
@@ -84,23 +95,23 @@ export class TradeEmuComponent {
   async enableTradeMode():Promise<boolean> {
     return new Promise<boolean>((resolve, reject) => {
       const timeout = setTimeout(() => {
-        //subscription.unsubscribe();
+        subscription.unsubscribe();
         reject(new Error('Timed out waiting for device to get ready'));
-      }, 2000000);
+      }, 2000);
 
-      // const subscription = this.linkDeviceService.statusEvents$.subscribe(statusEvent => {
-      //   console.log(statusEvent);
-      //   if (statusEvent === LinkStatus.DeviceReady) {
-      //     clearTimeout(timeout);
-      //     subscription.unsubscribe();
-      //     resolve(true);
-      //   }
-      // });
+      const subscription = this.linkDeviceService.statusEvents$.subscribe(statusEvent => {
+        console.log(statusEvent);
+        if (statusEvent === LinkStatus.DeviceReady) {
+          clearTimeout(timeout);
+          subscription.unsubscribe();
+          resolve(true);
+        }
+      });
 
       this.linkDeviceService.sendCommand(CommandType.Cancel).then(ok => {
         if (!ok) {
           clearTimeout(timeout);
-          //subscription.unsubscribe();
+          subscription.unsubscribe();
           reject(new Error('Failed to send Cancel command'));
         }
       });
@@ -110,7 +121,7 @@ export class TradeEmuComponent {
       this.linkDeviceService.sendCommand(CommandType.SetMode, args).then(ok => {
         if (!ok) {
           clearTimeout(timeout);
-          //subscription.unsubscribe();
+          subscription.unsubscribe();
           reject(new Error('Failed to send SetMode command'));
         }
       })
@@ -147,5 +158,16 @@ export class TradeEmuComponent {
 
   protected isCurrentlyIn(step: StepsState): boolean {
     return this.stepState == step
+  }
+
+  @HostListener('document:keydown', ['$event'])
+  protected handleKeyboardEvent(event: KeyboardEvent) {
+    if (event.key === 'ArrowUp') {
+      this.stepState++;
+    }
+
+    if (event.key === 'ArrowDown') {
+      this.stepState--;
+    }
   }
 }

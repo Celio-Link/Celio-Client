@@ -400,6 +400,11 @@ export class PkmnFile {
   public pokemonName: string;
 
   private constructor(public decryptedBuffer: Uint8Array, public encryptedBuffer: Uint8Array, public name: string) {
+
+    // set mailID to 0xFF to skirt around older pkHex bug
+    this.decryptedBuffer[85] = 0xFF;
+    this.encryptedBuffer[85] = 0xFF;
+
     this.pokemonId = this.getPokemonId();
     this.pokemonName = this.getPokemonName();
   }

@@ -16,6 +16,7 @@ export enum LinkStatus {
   LinkClosed = 0xFF07,
 
   DeviceReady = 0xFF08,
+  EmuTradeSessionFinished = 0xFF09,
 
   StatusDebug = 0xFFFF
 }

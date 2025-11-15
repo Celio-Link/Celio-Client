@@ -94,6 +94,10 @@ export class OnlineLinkComponent {
     connect: () => {
       console.log("Connected to Server")
     },
+
+    disconnect: (reason: string) => {
+      console.log("Disconnected from Server: " + reason);
+    }
   };
 
   constructor(private cd: ChangeDetectorRef) {
@@ -108,7 +112,7 @@ export class OnlineLinkComponent {
     this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(disconnect => {
       this.advanceLinkState(StepsState.ConnectingCelioDevice);
       if (this.socket.connected) {
-        this.socket.disconnect();
+        this.socket.emit("sessionLeft");
       }
     })
   }
@@ -127,6 +131,11 @@ export class OnlineLinkComponent {
     this.dataSubscription.unsubscribe();
     this.statusSubscription.unsubscribe();
     this.disconnectSubscription.unsubscribe();
+
+
+    if (this.socket.connected) {
+      this.socket.disconnect();
+    }
 
     Object.entries(this.socketEventHandlers).forEach(([event, handler]) => {
       this.socket.off(event, handler);
@@ -202,8 +211,10 @@ export class OnlineLinkComponent {
   }
 
   handleLinkDeviceStatus(status: LinkStatus) {
+    console.log("Device send LinkStatus: " + LinkStatus[status]);
     if (status === LinkStatus.DeviceReady && this.stepState === StepsState.SettingLinkMode) {
       this.advanceLinkState(StepsState.Ready);
+      return;
     }
     const message: StatusMessage = { type: 'status', statusType: status };
     this.socket.emit('deviceStatus', message);
