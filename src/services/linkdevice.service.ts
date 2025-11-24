@@ -1,9 +1,8 @@
 import { Injectable } from '@angular/core';
-import { interval, Subject } from 'rxjs';
+import { Subject } from 'rxjs';
 
 export type UInt16 = number & { __uint16: true };
 export type DataArray = [UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16];
-export type DataHandler = (data: DataArray) => void;
 
 export enum LinkStatus {
 

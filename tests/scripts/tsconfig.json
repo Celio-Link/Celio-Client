@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+
+    "strict": true,
+
+    "types": ["node"],        // ✅ Add this
+    "lib": ["ES2020"]         // optional, but good
+  },
+
+  "include": ["tests", "src"]
+}

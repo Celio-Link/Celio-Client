@@ -30,11 +30,14 @@
     "@angular/router": "^20.1.0",
     "@tailwindcss/postcss": "^4.1.12",
     "@tailwindcss/vite": "^4.1.12",
+    "@types/node": "^24.10.1",
     "@types/w3c-web-usb": "^1.0.10",
     "rxjs": "~7.8.0",
     "socket.io-client": "^4.8.1",
     "true-myth": "^9.1.0",
     "tslib": "^2.3.0",
+    "uuid": "^13.0.0",
+    "vitest": "^3.2.4",
     "zone.js": "~0.15.0"
   },
   "devDependencies": {
@@ -52,6 +55,7 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.12",
+    "ts-node": "^10.9.2",
     "typescript": "~5.8.2"
   },
   "description": "This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.1.6.",
