@@ -1,27 +1,32 @@
 import {Injectable} from '@angular/core';
 import {io, Socket} from 'socket.io-client';
 import {fromEvent, Observable} from 'rxjs';
+import { randomUUID } from 'node:crypto';
 
 @Injectable({  providedIn: 'root',})
 export class WebSocketService {
 
-  private socket: Socket = io('ws://localhost:8080', {
+  protected socket: Socket = io('ws://localhost:8080', {
     transports: ["websocket"],
     autoConnect: false,
-    retries: 10,
-    ackTimeout: 400,
+    // retries: 10,
+    // ackTimeout: 5000,
     reconnectionAttempts: 4,
     reconnectionDelay: 100,
     reconnectionDelayMax: 1000,
-    timeout: 5000,
+    timeout: 5000
   });
 
   uuid() {
     return 5;
   }
 
+  constructor(private clientId: string = randomUUID()) {
+    this.socket.auth = { clientId: this.clientId }
+  }
+
   onDisconnect$ = fromEvent<void>(this.socket, 'disconnect');
-  onConnect = fromEvent<void>(this.socket, 'connect');
+  onConnect$ = fromEvent<void>(this.socket, 'connect');
 
   /**
    * Create an observable from a socket.io event.
@@ -49,7 +54,7 @@ export class WebSocketService {
    * @param args - Optional arguments to pass to the event handler.
    */
   emit(event: string, ...args: any[]) {
-    this.socket.emit(event, args);
+    this.socket.emit(event, ...args);
   }
 
   /**

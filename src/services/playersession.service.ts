@@ -4,14 +4,9 @@ import {Result} from 'true-myth';
 
 import { WebSocketService } from './websocket.service';
 
-import {
-  JoinMessage,
-  SessionCreationMessage
-} from '../client/messenges';
-
-enum ErrorType {
+export enum ErrorType {
   NotFound = "Not Found",
-  AlreadyExists = "AlreadyExists"
+  AlreadyExists = "Already Exists"
 }
 
 interface SessionState {
@@ -27,8 +22,6 @@ export class PlayerSessionService {
     if (raw && raw.variant === "Err") return Result.err(raw.error as E);
     throw new Error("Not a valid Result");
   }
-
-  private joinMessage: SessionCreationMessage | JoinMessage | undefined = undefined;
 
   private partnerEventSubject =  new Subject<boolean>();
   public partnerEvents$ = this.partnerEventSubject.asObservable();
@@ -58,34 +51,28 @@ export class PlayerSessionService {
   }
 
   createSession(): Promise<SessionState> {
-    this.joinMessage = { type: 'sessionCreate' };
     return new Promise((resolve, reject) => {
-      this.websocketService.emit("sessionCreate", this.joinMessage!,
-        (raw: any) => {
+      this.websocketService.emit("sessionCreate", (raw: any) => {
           const result: Result<SessionState, ErrorType> = this.reviveResult(raw)
           if (result.isOk) {
             resolve(result.value);
           } else {
             reject(result.error);
           }
-        }
-      );
+        });
     });
   }
 
   joinSession(sessionId: string): Promise<SessionState> {
-    this.joinMessage = { type: 'sessionJoin', id: sessionId };
     return new Promise((resolve, reject) => {
-      this.websocketService.emit("sessionJoin", this.joinMessage!,
-        (raw: any) => {
+      this.websocketService.emit("sessionJoin", sessionId, (raw: any) => {
           const result: Result<SessionState, ErrorType> = this.reviveResult(raw)
           if (result.isOk) {
             resolve(result.value);
           } else {
             reject(result.error);
           }
-        }
-      );
+        });
     });
   }
 
