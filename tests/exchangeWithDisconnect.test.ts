@@ -54,5 +54,5 @@ test("Exchange Data with Disconnect", {timeout: 10000}, () => new Promise<void>(
   await linkDeviceServiceMockA.connectDevice()
   await linkDeviceServiceMockB.connectDevice()
 
-  setTimeout(() => websocketServiceA.disconnect(), 1000)
+  setTimeout(() => websocketServiceA.disconnect(), 2000)
 }));
