@@ -1,12 +1,11 @@
 import { test, expect } from "vitest";
 import { PlayerSessionService } from "../src/services/playersession.service.js";
 import { WebSocketService } from "../src/services/websocket.service.js";
-import {DataPacket, LinkDeviceExchangeService} from '../src/services/linkdeviceExchange.service';
+import {DataPacket, LinkdeviceExchangeSession} from '../src/pages/onlineLink/linkdeviceExchangeSession';
 import { LinkDeviceServiceMock, DataArray } from "./mocks/service/linkdevice.service.mock";
-import { LoopbackDataGenerator } from './mocks/LoopbackDataGenerator';
+import {CelioDeviceMock} from './mocks/celioDeviceMock';
 
-
-class LinkDeviceExchangeMockWrongSequence extends LinkDeviceExchangeService {
+class LinkDeviceExchangeMockWrongSequence extends LinkdeviceExchangeSession {
 
   private packetBuffer: DataPacket[] = []
 
@@ -47,20 +46,20 @@ test("Exchange Data in wrong sequence", {timeout: 10000}, () => new Promise<void
   const successfulExchanges: number = 6
   let numberOfExchanges = 0;
 
-  const LoopBackDataGeneratorA = new LoopbackDataGenerator((received: DataArray, history: DataArray) => {
+  const celioDeviceA = new CelioDeviceMock((received: DataArray, history: DataArray) => {
     expect(received).toEqual(history)
     if (numberOfExchanges == successfulExchanges) {
       done();
     }
     numberOfExchanges++;
-  })
-  const LoopBackDataGeneratorB = new LoopbackDataGenerator((received: DataArray, history: DataArray) => {
+  }, 100, 10000)
+  const LoopBackDataGeneratorB = new CelioDeviceMock((received: DataArray, history: DataArray) => {
     expect(received).toEqual(history)
-  })
+  }, 100, 10000)
 
   const websocketServiceA = new WebSocketService();
   const playerSessionServiceA = new PlayerSessionService(websocketServiceA);
-  const linkDeviceServiceMockA = new LinkDeviceServiceMock(LoopBackDataGeneratorA, LoopBackDataGeneratorB, 100);
+  const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, LoopBackDataGeneratorB);
   const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockWrongSequence(websocketServiceA, linkDeviceServiceMockA as any);
   websocketServiceA.connect();
   let sessionInfo = await playerSessionServiceA.createSession()
@@ -68,8 +67,8 @@ test("Exchange Data in wrong sequence", {timeout: 10000}, () => new Promise<void
 
   const websocketServiceB = new WebSocketService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
-  const linkDeviceServiceMockB = new LinkDeviceServiceMock(LoopBackDataGeneratorB, LoopBackDataGeneratorA, 100);
-  const linkDeviceExchangeServiceB = new LinkDeviceExchangeService(websocketServiceB, linkDeviceServiceMockB as any);
+  const linkDeviceServiceMockB = new LinkDeviceServiceMock(LoopBackDataGeneratorB, celioDeviceA);
+  const linkDeviceExchangeServiceB = new LinkdeviceExchangeSession(websocketServiceB, linkDeviceServiceMockB as any);
   websocketServiceB.connect();
   sessionInfo = await playerSessionServiceB.joinSession(sessionInfo.id)
   expect(sessionInfo.full).toEqual(true);

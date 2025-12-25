@@ -6,7 +6,7 @@ import { CommandType , LinkDeviceService, Mode } from '../../services/linkdevice
 import {Subscription} from 'rxjs';
 import {PlayerSessionService} from '../../services/playersession.service';
 import {WebSocketService} from '../../services/websocket.service';
-import {LinkDeviceExchangeService} from '../../services/linkdeviceExchange.service';
+import {LinkdeviceExchangeSession} from './linkdeviceExchangeSession';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -35,11 +35,13 @@ export class OnlineLinkComponent {
 
   private partnerSubscription: Subscription
 
-  constructor(private cd: ChangeDetectorRef, private playerSessionService: PlayerSessionService,
-              private linkDeviceExchangeService: LinkDeviceExchangeService, private socket: WebSocketService) {
+  private linkSession: LinkdeviceExchangeSession | undefined = undefined;
+
+  constructor(private cd: ChangeDetectorRef, private playerSessionService: PlayerSessionService, private socket: WebSocketService) {
     this.partnerSubscription = this.playerSessionService.partnerEvents$.subscribe(partnerConnected => {
       if (partnerConnected) {
         this.advanceLinkState(StepsState.SettingLinkMode);
+        this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService, () => { this.renewSession() });
       }
       else {
         this.advanceLinkState(StepsState.WaitingForPartner);
@@ -79,20 +81,24 @@ export class OnlineLinkComponent {
     this.playerSessionService.createSession().then(session => {
       this.sessionId = session.id;
       this.advanceLinkState(StepsState.WaitingForPartner);
-      this.linkDeviceExchangeService.resetPacketCounter();
     });
   }
 
   joinSession(sessionId: string) {
     this.playerSessionService.joinSession(sessionId).then(session => {
+      this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService, () => { this.renewSession() });
       this.advanceLinkState(StepsState.SettingLinkMode);
-      this.linkDeviceExchangeService.resetPacketCounter();
     });
+  }
+
+  renewSession() {
+    this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService, () => { this.renewSession() });
   }
 
   leaveSession() {
     this.playerSessionService.leaveSession();
     this.advanceLinkState(StepsState.JoiningSession);
+    this.linkSession = undefined;
   }
 
   protected hasReached(step: StepsState): boolean {

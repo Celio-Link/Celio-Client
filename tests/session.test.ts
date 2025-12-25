@@ -175,3 +175,34 @@ test("Both Parties Leave", () => new Promise<void>(async done => {
     });
   }, 800)
 }));
+
+test("Partner Disconnect Event", {timeout: 7000}, () => new Promise<void>(async done => {
+
+  const events: boolean[] = [];
+
+  const websocketService = new WebSocketService();
+  const playerSessionService = new PlayerSessionService(websocketService);
+  websocketService.connect();
+  let sessionInfo = await playerSessionService.createSession();
+
+  playerSessionService.partnerEvents$.subscribe(partnerConnected => {
+    events.push(partnerConnected);
+    if (events.length == 2) {
+      expect(events).toEqual([true, false]);
+      done();
+    }
+  })
+
+  expect(sessionInfo.full).toEqual(false);
+
+  const websocketServiceJoin = new WebSocketService();
+  const playerSessionServiceJoin = new PlayerSessionService(websocketServiceJoin);
+  websocketServiceJoin.connect();
+  sessionInfo = await playerSessionServiceJoin.joinSession(sessionInfo.id);
+
+  expect(sessionInfo.full).toEqual(true);
+
+  setTimeout(() => websocketServiceJoin.disconnect(), 500)
+
+
+}));

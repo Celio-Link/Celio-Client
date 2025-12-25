@@ -1,11 +1,11 @@
 import {expect, test} from 'vitest';
-import {LoopbackDataGenerator} from './mocks/LoopbackDataGenerator';
 import {DataArray, LinkDeviceServiceMock} from './mocks/service/linkdevice.service.mock';
 import {WebSocketService} from '../src/services/websocket.service';
 import {PlayerSessionService} from '../src/services/playersession.service';
-import {DataPacket, LinkDeviceExchangeService} from '../src/services/linkdeviceExchange.service';
+import {DataPacket, LinkdeviceExchangeSession} from '../src/pages/onlineLink/linkdeviceExchangeSession';
+import {CelioDeviceMock} from './mocks/celioDeviceMock';
 
-export class LinkDeviceExchangeMockDuplication extends LinkDeviceExchangeService {
+export class LinkDeviceExchangeMockDuplication extends LinkdeviceExchangeSession {
 
   override handleDeviceDataToSocket(data: DataArray) {
     const queued = this.deviceQueue.shift();
@@ -36,12 +36,12 @@ test("Exchange Data with repeated data packets", () => new Promise<void>(async d
 
   const successfulExchanges: number = 6
   let numberOfExchanges = 0;
-  const LoopBackDataGeneratorA = new LoopbackDataGenerator((received: DataArray, history: DataArray) => {
+  const celioDeviceA = new CelioDeviceMock((received: DataArray, history: DataArray) => {
     expect(received).toEqual(history)
     numberOfExchanges++;
     if (numberOfExchanges == successfulExchanges) done();
   })
-  const LoopBackDataGeneratorB = new LoopbackDataGenerator((received: DataArray, history: DataArray) => {
+  const celioDeviceB = new CelioDeviceMock((received: DataArray, history: DataArray) => {
     expect(received).toEqual(history)
     numberOfExchanges++;
     if (numberOfExchanges == successfulExchanges) done();
@@ -49,7 +49,7 @@ test("Exchange Data with repeated data packets", () => new Promise<void>(async d
 
   const websocketServiceA = new WebSocketService();
   const playerSessionServiceA = new PlayerSessionService(websocketServiceA);
-  const linkDeviceServiceMockA = new LinkDeviceServiceMock(LoopBackDataGeneratorA, LoopBackDataGeneratorB, 100);
+  const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB);
 
   // Mock sends out packets twice instead of once
   const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockDuplication(websocketServiceA, linkDeviceServiceMockA as any);
@@ -59,8 +59,8 @@ test("Exchange Data with repeated data packets", () => new Promise<void>(async d
 
   const websocketServiceB = new WebSocketService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
-  const linkDeviceServiceMockB = new LinkDeviceServiceMock(LoopBackDataGeneratorB, LoopBackDataGeneratorA, 100);
-  const linkDeviceExchangeServiceB = new LinkDeviceExchangeService(websocketServiceB, linkDeviceServiceMockB as any);
+  const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA);
+  const linkDeviceExchangeServiceB = new LinkdeviceExchangeSession(websocketServiceB, linkDeviceServiceMockB as any);
   websocketServiceB.connect();
   sessionInfo = await playerSessionServiceB.joinSession(sessionInfo.id)
   expect(sessionInfo.full).toEqual(true);

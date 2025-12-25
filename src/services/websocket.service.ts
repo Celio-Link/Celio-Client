@@ -1,7 +1,7 @@
-import {Injectable} from '@angular/core';
-import {io, Socket} from 'socket.io-client';
-import {fromEvent, Observable} from 'rxjs';
-import { randomUUID } from 'node:crypto';
+import { Injectable } from '@angular/core';
+import { io, Socket } from 'socket.io-client';
+import { fromEvent, Observable } from 'rxjs';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable({  providedIn: 'root',})
 export class WebSocketService {
@@ -17,11 +17,9 @@ export class WebSocketService {
     timeout: 5000
   });
 
-  uuid() {
-    return 5;
-  }
+  private clientId: string = uuidv4()
 
-  constructor(private clientId: string = randomUUID()) {
+  constructor() {
     this.socket.auth = { clientId: this.clientId }
   }
 
@@ -55,47 +53,6 @@ export class WebSocketService {
    */
   emit(event: string, ...args: any[]) {
     this.socket.emit(event, ...args);
-  }
-
-  /**
-   * Emit an event to the server with retry logic.
-   * @param event
-   * @param data
-   * @param retries
-   * @param timeout
-   * @param backoff
-   */
-  emitWithRetry<R>(event: string, data: any, {
-    retries = 5,
-    timeout = 2000,
-    backoff = 500  // ms added per retry
-  } = {}) {
-
-    const id = this.uuid();
-
-    return new Promise((resolve, reject) => {
-      let attempt = 0;
-
-      const tryEmit = () => {
-        attempt++;
-
-        this.socket.timeout(timeout).emit(event, { id, data }, (err: any, response: R) => {
-          if (!err) {
-            resolve(response);
-            return;
-          }
-
-          if (attempt > retries) {
-            reject(new Error("Max retries reached"));
-            return;
-          }
-
-          setTimeout(tryEmit, backoff * attempt);
-        });
-      };
-
-      tryEmit();
-    });
   }
 
   connect() {

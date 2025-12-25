@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import {interval, map, Observable, repeat, repeatWhen, Subject, Subscriber, takeUntil} from 'rxjs';
-import {ConnectionStatusMock} from '../ConnectionStatusMock';
-import {LoopbackDataGenerator} from '../LoopbackDataGenerator';
+import {CelioDeviceMock} from '../celioDeviceMock';
 
 export type UInt16 = number & { __uint16: true };
 export type DataArray = [UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16];
@@ -32,7 +31,9 @@ export enum CommandType
   SetModeMaster = 0x10,
   SetModeSlave = 0x11,
   StartHandshake= 0x12,
-  ConnectLink = 0x13
+  ConnectLink = 0x13,
+
+  MockCloseLink = 0xC7
 }
 
 export enum Mode
@@ -55,21 +56,14 @@ export class LinkDeviceServiceMock {
 
   public receivedCommands: CommandType[] = [];
 
-  public connectionStatus = new ConnectionStatusMock();
-
-  private tick$: Observable<number>;
-
-  constructor(private txLoopback: LoopbackDataGenerator, private rxLoopback: LoopbackDataGenerator,
-              tickInterval: number = 100)
-  {
-    this.tick$ = interval(tickInterval);
-  }
+  constructor(private localCelioDevice: CelioDeviceMock, private remoteCelioDevice: CelioDeviceMock)
+  {}
 
   isConnected(): boolean { return true }
 
   async sendData(receivedData: DataArray) : Promise<boolean> {
   try {
-    this.rxLoopback.receivedData(receivedData);
+    this.remoteCelioDevice.receivedData(receivedData);
     return true;
   } catch (err) {
     console.error("sendData failed:", err);
@@ -79,30 +73,14 @@ export class LinkDeviceServiceMock {
 
   async sendCommand(command: CommandType, args: Uint8Array = new Uint8Array(0)): Promise<boolean> {
     this.receivedCommands.push(command);
-    this.connectionStatus.setCurrentCommand(command);
+    this.localCelioDevice.setCurrentCommand(command);
     return true
   }
 
   async connectDevice(): Promise<boolean>
   {
-    this.tick$
-      .pipe(
-        takeUntil(this.connected$),
-        repeatWhen(() => this.reconnect$)
-      )
-      .subscribe(value => {
-        if (this.connectionStatus.isConnected()) {
-          console.log("Connected");
-          this.connected$.next();
-          this.txLoopback.data$.subscribe(this.dataEventSubject);
-        }
-        else {
-          let nextStatus = this.connectionStatus.getStatus();
-          console.log("Next status: " + LinkStatus[nextStatus!]);
-          if (nextStatus == undefined) return
-          this.statusEventSubject.next(nextStatus)
-        }
-      })
+    this.localCelioDevice.status$.subscribe(this.statusEventSubject);
+    this.localCelioDevice.data$.subscribe(this.dataEventSubject);
 
     return true;
   }

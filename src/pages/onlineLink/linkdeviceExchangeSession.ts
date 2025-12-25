@@ -1,8 +1,7 @@
-import {Injectable} from '@angular/core';
 import {Subscription} from 'rxjs';
-import {WebSocketService} from './websocket.service';
-import {CommandType, DataArray, LinkDeviceService, LinkStatus} from './linkdevice.service';
-import { v4 as uuidv4 } from 'uuid';
+import {WebSocketService} from '../../services/websocket.service';
+import {CommandType, DataArray, LinkDeviceService, LinkStatus} from '../../services/linkdevice.service';
+import {v4 as uuidv4} from 'uuid';
 
 export interface DataPacket {
   sequence: number;
@@ -19,8 +18,7 @@ export interface StatusPacket {
   linkStatus: LinkStatus;
 }
 
-@Injectable({  providedIn: 'root',})
-export class LinkDeviceExchangeService {
+export class LinkdeviceExchangeSession {
 
   private subscriptions = new Subscription();
 
@@ -32,7 +30,8 @@ export class LinkDeviceExchangeService {
   private expectedPacketSequence = 0;
   protected transmittedPacketCounter = 0;
 
-  constructor(protected websocketService: WebSocketService, protected linkDeviceService: LinkDeviceService) {
+  constructor(protected websocketService: WebSocketService, protected linkDeviceService: LinkDeviceService,
+              private sessionEndHandler: () => void = () => {}) {
     this.subscriptions.add(linkDeviceService.statusEvents$.subscribe(status => {
       this.handleDeviceStatusToSocket(status);
     }))
@@ -111,6 +110,7 @@ export class LinkDeviceExchangeService {
       case LinkStatus.DeviceReady:
       case LinkStatus.EmuTradeSessionFinished:
       case LinkStatus.StatusDebug:
+      case LinkStatus.LinkClosed: this.sessionEndHandler();
         return;
       default:
     }
@@ -129,13 +129,4 @@ export class LinkDeviceExchangeService {
       () => console.log("Command send to Celio device failed with: ERROR")
     )
   }
-
-  resetPacketCounter() {
-    this.expectedPacketSequence = 0;
-    this.transmittedPacketCounter = 0;
-    this.bufferedPackets.clear();
-    this.commandSet.clear();
-    this.deviceQueue = [];
-  }
-
 }
