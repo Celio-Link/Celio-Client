@@ -52,10 +52,10 @@ test("Exchange Data in wrong sequence", {timeout: 10000}, () => new Promise<void
       done();
     }
     numberOfExchanges++;
-  }, 100, 10000)
+  }, 20, 100)
   const LoopBackDataGeneratorB = new CelioDeviceMock((received: DataArray, history: DataArray) => {
     expect(received).toEqual(history)
-  }, 100, 10000)
+  }, 20, 100)
 
   const websocketServiceA = new WebSocketService();
   const playerSessionServiceA = new PlayerSessionService(websocketServiceA);

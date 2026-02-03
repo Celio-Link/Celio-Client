@@ -7,7 +7,7 @@ export type DataHandler = (data: DataArray) => void;
 
 export enum LinkStatus {
 
-  HandshakeWaiting = 0xFF02,
+  AwaitMode = 0xFF02,
   HandshakeReceived = 0xFF03,
   HandshakeFinished = 0xFF04,
 
@@ -85,7 +85,7 @@ export class LinkDeviceService {
       this.readStatus();
       this.readData();
 
-      return true; // Everything went OK
+      return true;
     } catch (err) {
       console.log('USB connection to Celio Device failed', err);
       return false;

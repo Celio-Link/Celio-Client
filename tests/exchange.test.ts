@@ -13,16 +13,16 @@ test("Exchange Data", () => new Promise<void>(async done => {
     expect(received).toEqual(history)
     numberOfExchanges++;
     if (numberOfExchanges == successfulExchanges) done();
-  })
+  }, 10)
   const celioDeviceB = new CelioDeviceMock((received: DataArray, history: DataArray) => {
     expect(received).toEqual(history)
     numberOfExchanges++;
     if (numberOfExchanges == successfulExchanges) done();
-  })
+  }, 10)
 
   const websocketServiceA = new WebSocketService();
   const playerSessionServiceA = new PlayerSessionService(websocketServiceA);
-  const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB, 100);
+  const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB);
   const linkDeviceExchangeServiceA = new LinkdeviceExchangeSession(websocketServiceA, linkDeviceServiceMockA as any);
   websocketServiceA.connect();
   let sessionInfo = await playerSessionServiceA.createSession()
@@ -30,7 +30,7 @@ test("Exchange Data", () => new Promise<void>(async done => {
 
   const websocketServiceB = new WebSocketService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
-  const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA, 100);
+  const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA);
   const linkDeviceExchangeServiceB = new LinkdeviceExchangeSession(websocketServiceB, linkDeviceServiceMockB as any);
   websocketServiceB.connect();
   sessionInfo = await playerSessionServiceB.joinSession(sessionInfo.id)

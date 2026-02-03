@@ -40,12 +40,12 @@ test("Exchange Data with repeated data packets", () => new Promise<void>(async d
     expect(received).toEqual(history)
     numberOfExchanges++;
     if (numberOfExchanges == successfulExchanges) done();
-  })
+  },10)
   const celioDeviceB = new CelioDeviceMock((received: DataArray, history: DataArray) => {
     expect(received).toEqual(history)
     numberOfExchanges++;
     if (numberOfExchanges == successfulExchanges) done();
-  })
+  },10)
 
   const websocketServiceA = new WebSocketService();
   const playerSessionServiceA = new PlayerSessionService(websocketServiceA);

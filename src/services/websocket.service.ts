@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 @Injectable({  providedIn: 'root',})
 export class WebSocketService {
 
-  protected socket: Socket = io('ws://localhost:8080', {
+  protected socket: Socket = io('ws://192.168.2.20:5678', {
     transports: ["websocket"],
     autoConnect: false,
     // retries: 10,

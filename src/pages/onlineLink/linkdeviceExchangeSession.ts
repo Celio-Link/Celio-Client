@@ -30,8 +30,7 @@ export class LinkdeviceExchangeSession {
   private expectedPacketSequence = 0;
   protected transmittedPacketCounter = 0;
 
-  constructor(protected websocketService: WebSocketService, protected linkDeviceService: LinkDeviceService,
-              private sessionEndHandler: () => void = () => {}) {
+  constructor(protected websocketService: WebSocketService, protected linkDeviceService: LinkDeviceService) {
     this.subscriptions.add(linkDeviceService.statusEvents$.subscribe(status => {
       this.handleDeviceStatusToSocket(status);
     }))
@@ -48,10 +47,11 @@ export class LinkdeviceExchangeSession {
     this.subscriptions.add(this.websocketService.fromEvent<CommandPacket>('deviceCommand').subscribe((commandPacket: CommandPacket) => {
       this.handleSocketCommandToDevice(commandPacket)
     }))
-  }
 
-  ngOnDestroy() {
-    this.subscriptions.unsubscribe();
+    this.subscriptions.add(this.websocketService.fromEvent<void>('sessionClose').subscribe(() => {
+      console.log("LinkSession: Unsubscribing from events...");
+      this.subscriptions.unsubscribe();
+    }))
   }
 
   handleDeviceDataToSocket(data: DataArray) {
@@ -110,7 +110,6 @@ export class LinkdeviceExchangeSession {
       case LinkStatus.DeviceReady:
       case LinkStatus.EmuTradeSessionFinished:
       case LinkStatus.StatusDebug:
-      case LinkStatus.LinkClosed: this.sessionEndHandler();
         return;
       default:
     }

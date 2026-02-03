@@ -8,7 +8,8 @@ export type DataArray = [UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
 
 export enum LinkStatus {
 
-  HandshakeWaiting = 0xFF02,
+  AwaitMode = 0xFF02,
+
   HandshakeReceived = 0xFF03,
   HandshakeFinished = 0xFF04,
 

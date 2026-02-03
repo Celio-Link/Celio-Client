@@ -26,6 +26,9 @@ export class PlayerSessionService {
   private partnerEventSubject =  new Subject<boolean>();
   public partnerEvents$ = this.partnerEventSubject.asObservable();
 
+  private sessionSubject =  new Subject<void>();
+  public sessionRenew$ = this.sessionSubject.asObservable();
+
   private socketEventHandlers: Record<string, (data?: any) => void> = {
 
     partnerJoined: () => {
@@ -34,6 +37,10 @@ export class PlayerSessionService {
 
     partnerLeft: () => {
       this.partnerEventSubject.next(false);
+    },
+
+    sessionClose: () => {
+      this.sessionSubject.next();
     }
   }
 

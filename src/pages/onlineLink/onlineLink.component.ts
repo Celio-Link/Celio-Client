@@ -1,7 +1,7 @@
 import {ChangeDetectorRef, Component, HostListener, inject} from '@angular/core';
 import { NgClass, NgIf } from '@angular/common';
 
-import { CommandType , LinkDeviceService, Mode } from '../../services/linkdevice.service';
+import {CommandType, LinkDeviceService, LinkStatus, Mode} from '../../services/linkdevice.service';
 
 import {Subscription} from 'rxjs';
 import {PlayerSessionService} from '../../services/playersession.service';
@@ -25,6 +25,7 @@ enum StepsState {
   ],
   templateUrl: './onlineLink.component.html'
 })
+
 export class OnlineLinkComponent {
   private linkDeviceService = inject(LinkDeviceService)
 
@@ -34,6 +35,7 @@ export class OnlineLinkComponent {
   protected StepsState = StepsState;
 
   private partnerSubscription: Subscription
+  private linkSessionCloseSubscription: Subscription
 
   private linkSession: LinkdeviceExchangeSession | undefined = undefined;
 
@@ -41,12 +43,16 @@ export class OnlineLinkComponent {
     this.partnerSubscription = this.playerSessionService.partnerEvents$.subscribe(partnerConnected => {
       if (partnerConnected) {
         this.advanceLinkState(StepsState.SettingLinkMode);
-        this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService, () => { this.renewSession() });
+        this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService);
       }
       else {
         this.advanceLinkState(StepsState.WaitingForPartner);
       }
-    })
+    });
+
+    this.linkSessionCloseSubscription = this.playerSessionService.sessionRenew$.subscribe(() => {
+      this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService);
+    });
   }
 
   ngOnInit() {
@@ -58,6 +64,7 @@ export class OnlineLinkComponent {
 
   ngOnDestroy() {
     this.partnerSubscription.unsubscribe();
+    this.linkSessionCloseSubscription.unsubscribe();
   }
 
   connect(): void {
@@ -71,10 +78,56 @@ export class OnlineLinkComponent {
     )
   }
 
-  enableLinkMode() {
-    let args: Uint8Array = new Uint8Array(1);
-    args[0] = Mode.onlineLink;
-    this.linkDeviceService.sendCommand(CommandType.SetMode, args);
+  async enableLinkMode():Promise<boolean> {
+    return new Promise<boolean>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        subscription.unsubscribe();
+        reject(new Error('Timed out waiting for device to get ready'));
+      }, 2000);
+
+      const subscription = this.linkDeviceService.statusEvents$.subscribe(statusEvent => {
+        console.log(statusEvent);
+        if (statusEvent === LinkStatus.DeviceReady) {
+          clearTimeout(timeout);
+          subscription.unsubscribe();
+          resolve(true);
+        }
+      });
+
+      this.linkDeviceService.sendCommand(CommandType.Cancel).then(ok => {
+        if (!ok) {
+          clearTimeout(timeout);
+          subscription.unsubscribe();
+          reject(new Error('Failed to send Cancel command'));
+        }
+      });
+
+      let args: Uint8Array = new Uint8Array(1);
+      args[0] = Mode.onlineLink;
+      this.linkDeviceService.sendCommand(CommandType.SetMode, args).then(ok => {
+        if (!ok) {
+          clearTimeout(timeout);
+          subscription.unsubscribe();
+          reject(new Error('Failed to send SetMode command'));
+        }
+      })
+    });
+  }
+
+  async start() {
+    let success = await this.enableLinkMode();
+    if (!success)
+    {
+      console.log("Failed to enable link mode");
+    }
+    this.stepState = StepsState.Ready;
+  }
+
+  disconnect(): void {
+    this.linkDeviceService.sendCommand(CommandType.Cancel);
+    this.stepState = StepsState.JoiningSession;
+    this.playerSessionService.leaveSession();
+    this.cd.detectChanges();
   }
 
   createSession() {
@@ -86,13 +139,13 @@ export class OnlineLinkComponent {
 
   joinSession(sessionId: string) {
     this.playerSessionService.joinSession(sessionId).then(session => {
-      this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService, () => { this.renewSession() });
+      this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService);
       this.advanceLinkState(StepsState.SettingLinkMode);
     });
   }
 
   renewSession() {
-    this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService, () => { this.renewSession() });
+    this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService);
   }
 
   leaveSession() {

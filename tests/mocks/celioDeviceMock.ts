@@ -1,60 +1,67 @@
-import {CommandType, LinkStatus} from './service/linkdevice.service.mock';
-import {interval, map, Observable, Subscriber} from 'rxjs';
-import {DataArray, UInt16} from './service/linkdevice.service.mock';
+import {CommandType, DataArray, LinkStatus, UInt16} from './service/linkdevice.service.mock';
+import {finalize, from, interval, map, Observable, Subject, Subscriber, switchMap, zipWith} from 'rxjs';
+import {v4 as uuidv4} from 'uuid';
 
 export class CelioDeviceMock {
 
   public readonly data$: Observable<DataArray>;
   public readonly status$: Observable<LinkStatus>;
 
-  private index: number = 0;
-  private currentCommand: CommandType = CommandType.Empty;
-  private status: [CommandType[], LinkStatus][] = [
-    [[CommandType.Empty], LinkStatus.HandshakeWaiting],
-    [[CommandType.SetModeMaster, CommandType.SetModeSlave], LinkStatus.HandshakeReceived],
-    [[CommandType.StartHandshake], LinkStatus.HandshakeFinished],
-    [[CommandType.Empty], LinkStatus.LinkConnected],
-    [[CommandType.MockCloseLink], LinkStatus.LinkClosed]
-  ];
-  private connected: boolean = false;
+  private handshakeComplete$ = new Subject<void>();
 
+  private currentStatus: LinkStatus | undefined = LinkStatus.AwaitMode;
   public commands: CommandType[] = [];
 
   public onConnectedCallback: () => void = () => {};
+  public onLinkCloseCallback: () => void = () => {};
 
-  protected history: DataArray[] = [];
+  private id = uuidv4();
+
+  private index = 0;
 
   private randomUInt16(): UInt16 {
     return (Math.floor(Math.random() * 0x10000) & 0xffff) as UInt16;
   }
 
-  private randomDataArray(): DataArray {
+  private randomDataArray(secondSlot: UInt16): DataArray {
     return [
-      this.randomUInt16(), this.randomUInt16(), this.randomUInt16(), this.randomUInt16(),
+      this.randomUInt16(),secondSlot , this.randomUInt16(), this.randomUInt16(),
       this.randomUInt16(), this.randomUInt16(), this.randomUInt16(), this.randomUInt16(),
     ];
   }
 
-  constructor(protected receiveCallback: (received: DataArray, history: DataArray) => void,
-              private intervalMs = 500,
-              private intervalUntilClose = 3000) {
-    this.data$ = new Observable<DataArray>((subscriber: Subscriber<DataArray>) => {
-      const subscription = interval(this.intervalMs).pipe(
-        map(() => this.randomDataArray())
-      ).subscribe(value => {
-        if (!this.connected) return;
-        this.history.push(value);
-        subscriber.next(value);
-      })
+  private data: DataArray[] = []
 
-      return () => subscription.unsubscribe();
-    });
+  constructor(protected receiveCallback: (received: DataArray, history: DataArray) => void,
+              numberOfEmits: number, private intervalMs = 500) {
+
+    for (let i = 0; i < numberOfEmits; i++) {
+      this.data.push(this.randomDataArray(i as UInt16));
+    }
+
+    //sentinel
+    this.data.push([0 as UInt16, 0 as UInt16, 0 as UInt16, 0 as UInt16,
+                    0 as UInt16, 0 as UInt16, 0 as UInt16, 0 as UInt16,
+    ])
+
+    this.data$ = this.handshakeComplete$.pipe(
+      switchMap(() =>
+        from(this.data).pipe(
+          zipWith(interval(this.intervalMs)),
+          map(([dataItem]) => dataItem),
+          finalize(() => {
+            this.setCurrentCommand(CommandType.MockCloseLink);
+          })
+        )
+      )
+    );
 
     this.status$ = new Observable<LinkStatus>((subscriber: Subscriber<LinkStatus>) => {
       const subscription = interval(this.intervalMs).subscribe(() => {
-        const value = this.getStatus();
-        if (!value) return;
-        subscriber.next(value);
+        console.log("Celio device '" + this.id+ "' has emitted a LinkStatus event: " + LinkStatus[this.currentStatus!]);
+        if (!this.currentStatus) return
+        subscriber.next(this.currentStatus!);
+        this.currentStatus = undefined;
       })
 
       return () => subscription.unsubscribe();
@@ -62,40 +69,44 @@ export class CelioDeviceMock {
   }
 
   receivedData(receivedData: DataArray) {
-    let sendData = this.history.shift()!
+    if (this.index == this.data.length - 1) {
+      this.index = 0;
+    }
+    let sendData = this.data[this.index]!;
+    this.index++;
     this.receiveCallback(receivedData, sendData);
   }
 
-  setCurrentCommand(command: CommandType) {
-    this.commands.push(command);
-
-    if (command === CommandType.ConnectLink) {
-
-      this.connected = true;
-      this.onConnectedCallback();
-
-      setTimeout(() => {
-        this.connected = false;
-        this.currentCommand = CommandType.MockCloseLink
-      }, this.intervalUntilClose);
-    }
-
-    this.currentCommand = command;
+  restart() {
+    this.currentStatus = LinkStatus.AwaitMode;
   }
 
-  isConnected() { return this.connected; }
+  setCurrentCommand(command: CommandType) {
 
-  getStatus() : LinkStatus | undefined {
-    if (this.connected) return undefined;
-    const commandStatusPair = this.status[this.index];
-    if (!commandStatusPair[0].includes(this.currentCommand)) {
-      return undefined;
+    this.commands.push(command);
+
+    switch (command) {
+      case CommandType.SetModeMaster:
+      case CommandType.SetModeSlave:
+        this.currentStatus = LinkStatus.HandshakeReceived;
+        break;
+
+      case CommandType.StartHandshake:
+        this.currentStatus = LinkStatus.HandshakeFinished;
+        setTimeout(() => {
+          this.currentStatus = LinkStatus.LinkConnected;
+        }, this.intervalMs);
+        break;
+
+      case CommandType.ConnectLink:
+        this.handshakeComplete$.next();
+        this.onConnectedCallback();
+        break;
+
+      case CommandType.MockCloseLink:
+        this.onLinkCloseCallback();
+        this.currentStatus = LinkStatus.LinkClosed;
     }
-    this.currentCommand = CommandType.Empty;
-    this.index++;
-    if (this.index > this.status.length) {
-      this.index = 0;
-    }
-    return commandStatusPair[1]
+
   }
 }

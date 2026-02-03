@@ -24,7 +24,7 @@
 
   <div class="divider"></div>
 
-  <div [class.opacity-0]="yetToReach(StepsState.JoiningSession)" [class.opacity-100]="hasReached(StepsState.JoiningSession)" class="transition-opacity duration-500 ease-in-out">
+  <div [class.opacity-100]="hasReached(StepsState.JoiningSession)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
 
       <div *ngIf="isCurrentlyIn(StepsState.JoiningSession)" class="flex w-full h-[5rem]">
@@ -50,7 +50,7 @@
     <div class="divider"></div>
   </div>
 
-  <div [class.opacity-0]="yetToReach(StepsState.WaitingForPartner)" [class.opacity-100]="hasReached(StepsState.WaitingForPartner)" class="transition-opacity duration-500 ease-in-out">
+  <div [class.opacity-100]="hasReached(StepsState.WaitingForPartner)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
       <div *ngIf="isCurrentlyIn(StepsState.WaitingForPartner)" class="flex w-full h-[5rem]">
           <p class="font-Gen3 text-4xl waiting">
@@ -67,11 +67,11 @@
     <div class="divider"></div>
   </div>
 
-  <div [class.opacity-0]="yetToReach(StepsState.SettingLinkMode)" [class.opacity-100]="hasReached(StepsState.SettingLinkMode)" class="transition-opacity duration-500 ease-in-out">
+  <div [class.opacity-100]="hasReached(StepsState.SettingLinkMode)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
       <div class="flex w-full h-[5rem]">
         <div class="card rounded-box grid h-20 grow place-items-center">
-          <button (click)="enableLinkMode()" class="btn btn-lg">Start</button>
+          <button (click)="start()" class="btn btn-lg">Start</button>
         </div>
         <img *ngIf="isCurrentlyIn(StepsState.SettingLinkMode)" src="/assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
       </div>
@@ -87,7 +87,7 @@
       <div class="flex justify-between items-center w-full relative">
         <img src="/assets/PC.png" class="image-pixelated h-48 w-auto relative ml-[8rem] bottom-1"/>
         <div class="bg-black h-2 w-[100%] relative"></div>
-        <button (click)="createSession()" class="btn btn-lg btn-dash btn-error mt-8 relative bottom-4">
+        <button (click)="disconnect()" class="btn btn-lg btn-dash btn-error mt-8 relative bottom-4">
           Disconnect
         </button>
         <div class="bg-black h-2 w-[100%] relative -mr-[12px]"></div>
