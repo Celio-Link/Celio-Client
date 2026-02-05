@@ -22,6 +22,12 @@
               {
                 "glob": "**/*",
                 "input": "public"
+              },
+              "src/assets",
+              {
+                "glob": "**/*",
+                "input": "src/assets/fonts",
+                "output": "/fonts/"
               }
             ],
             "styles": [

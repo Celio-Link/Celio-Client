@@ -41,7 +41,7 @@
 
 @font-face {
   font-family: 'Gen3';
-  src: url('/fonts/pokemon-emerald.ttf') format('truetype');
+  src: url('assets/fonts/pokemon-emerald.ttf') format('truetype');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -80,7 +80,7 @@
   border-width: 20px 40px;          /* top/bottom 20, left/right 40 */
 
   /* Border image pieces */
-  border-image-source: url("/assets/textbox.png");
+  border-image-source: url("assets/border/textbox.png");
   border-image-slice: 20 40 20 40 fill; /* top right bottom left (+ fill center) */
   border-image-repeat: repeat;           /* tile edges, don’t stretch */
 
