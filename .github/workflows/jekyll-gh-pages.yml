@@ -3,7 +3,7 @@ name: Deploy Angular to GitHub Pages
 on:
   push:
     branches:
-      - main
+      - gh-pages
 
 permissions:
   contents: read
