@@ -62,11 +62,14 @@ export class LinkDeviceService {
   public disconnectEvents$ = this.disconnectEventSubject.asObservable();
 
   constructor() {
-    navigator.usb.ondisconnect = event => {
-      console.log("USB device disconnected:", event.device);
-      this.device = undefined;
-      this.disconnectEventSubject.next()
-    };
+    if (navigator.usb != undefined)
+    {
+      navigator.usb.ondisconnect = event => {
+        console.log("USB device disconnected:", event.device);
+        this.device = undefined;
+        this.disconnectEventSubject.next()
+      };
+    }
   }
 
   isConnected(): boolean { return this.device != undefined; }
