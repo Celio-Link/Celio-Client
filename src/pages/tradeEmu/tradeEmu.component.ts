@@ -29,6 +29,7 @@ export class TradeEmuComponent {
   protected StepsState = StepsState;
 
   protected pkmFiles: PkmnFile[] = [];
+  protected webUsbError: boolean = false;
 
   private disconnectSubscription: Subscription;
   private statusSubscription: Subscription
@@ -64,6 +65,11 @@ export class TradeEmuComponent {
   }
 
   connect(): void {
+    if (navigator.usb == undefined) {
+      this.webUsbError = true;
+      return;
+    }
+
     this.linkDeviceService.connectDevice()
       .then(isConnected => {
           this.linkDeviceConnected = isConnected
@@ -157,6 +163,7 @@ export class TradeEmuComponent {
   }
 
   protected isCurrentlyIn(step: StepsState): boolean {
+    if (this.webUsbError) return false;
     return this.stepState == step
   }
 

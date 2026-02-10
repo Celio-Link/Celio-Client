@@ -38,6 +38,7 @@ export class OnlineLinkComponent {
   private linkSessionCloseSubscription: Subscription
 
   private linkSession: LinkdeviceExchangeSession | undefined = undefined;
+  protected webUsbError: boolean = false;
 
   constructor(private cd: ChangeDetectorRef, private playerSessionService: PlayerSessionService, private socket: WebSocketService) {
     this.partnerSubscription = this.playerSessionService.partnerEvents$.subscribe(partnerConnected => {
@@ -68,6 +69,11 @@ export class OnlineLinkComponent {
   }
 
   connect(): void {
+    if (navigator.usb == undefined) {
+      this.webUsbError = true;
+      return;
+    }
+
     this.linkDeviceService.connectDevice()
       .then(isConnected => {
         if (isConnected) {
@@ -163,6 +169,7 @@ export class OnlineLinkComponent {
   }
 
   protected isCurrentlyIn(step: StepsState): boolean {
+    if (this.webUsbError) return false;
     return this.stepState == step
   }
 
