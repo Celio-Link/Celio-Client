@@ -32,7 +32,7 @@ jobs:
         run: npm ci
 
       - name: Build Angular
-        run: npm run build -- --base-href=/Celio-Client/
+        run: npm run build -- --base-href=/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
