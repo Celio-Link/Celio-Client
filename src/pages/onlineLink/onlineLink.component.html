@@ -18,6 +18,10 @@
         Celio USB connection status: <br>
         Ready!
       </div>
+      <div *ngIf="webUsbError" class="font-Gen3 text-4xl">
+        Web USB is not supported by this browser. Firefox sadly does not support web USB currently.<br>
+        Please use Chrome or another Chromium based browser.
+      </div>
     </div>
     <img *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
   </div>
