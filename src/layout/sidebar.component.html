@@ -1,16 +1,18 @@
 <div class="flex h-screen justify-center bg-base-200">
-  <ul class="menu bg-base-200 h-[30vh] w-[15vh]">
+  <ul class="menu bg-base-200 h-[15vh] w-[40vh]">
     <li class="flex-1">
-      <a routerLink="/onlineLink" class="btn btn-square btn-lg w-full h-full" routerLinkActive="btn-disabled" [routerLinkActiveOptions]="{ exact: true }">
-        <img ngSrc="icons/onlinePlay.png" fill priority alt="Online Play"/>
-      </a>
+      <div class="box-menu">
+        <a routerLink="/onlineLink" class="w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+          Online Play
+        </a>
+      </div>
     </li>
-    <br>
     <li class="flex-1">
-      <a routerLink="/tradeEmu" class="btn btn-square btn-lg w-full h-full" routerLinkActive="btn-disabled" [routerLinkActiveOptions]="{ exact: true }">
-        <img ngSrc="icons/downloadPk3.png" fill priority alt="Trade Emulation"/>
-      </a>
+      <div class="box-menu">
+        <a routerLink="/tradeEmu" class="w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+          Trade Emulation
+        </a>
+      </div>
     </li>
-    <br>
   </ul>
 </div>

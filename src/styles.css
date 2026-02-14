@@ -88,6 +88,56 @@
   padding: 10px;
 }
 
+.box-menu {
+  /* make sure it's a real box */
+  display: block;
+  box-sizing: border-box;
+
+  /* crisp pixels */
+  /*image-rendering: pixelated;*/
+
+  /* Border must have a style and widths that match your corner thicknesses */
+  border-style: solid;              /* IMPORTANT: not 'none' */
+  border-width: 6px 6px;          /* top/bottom 20, left/right 40 */
+
+  /* Border image pieces */
+  border-image-source: url("assets/border/menubox.png");
+  border-image-slice: 6 6 6 6 fill; /* top right bottom left (+ fill center) */
+  border-image-repeat: repeat;           /* tile edges, don’t stretch */
+
+  /* content spacing */
+  padding: 10px;
+}
+
+.menu-item-unselected::before {
+  content: "";
+  position: relative;
+  left: 0;
+  width: 12px;
+  height: 16px;
+  padding-left: 1rem;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  display: inline-grid;
+}
+
+.menu-item::before {
+  content: "";
+  position: relative;
+  left: 0;
+  width: 12px;
+  height: 16px;
+  padding-left: 1rem;
+  background-image: url("assets/selection.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  image-rendering: pixelated;
+  display: inline-grid;
+}
+
 @keyframes dots {
   0%   { content: "."; }
   25%  { content: ".."; }
