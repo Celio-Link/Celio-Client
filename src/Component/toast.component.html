@@ -1,0 +1,7 @@
+<div *ngIf="visible" class="toast z-50">
+  <div class="alert alert-warning animate-toastInOut" [ngClass]="{'alert-warning': type === 'warning', 'alert-error': type === 'error'}">
+    <div class="font-Gen3 text-3xl">
+      <span>{{ message }}</span>
+    <div>
+  </div>
+</div>

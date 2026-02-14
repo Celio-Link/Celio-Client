@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, HostListener, inject} from '@angular/core';
+import {ChangeDetectorRef, Component, HostListener, inject, ViewChild} from '@angular/core';
 import { NgClass, NgIf } from '@angular/common';
 
 import {CommandType, LinkDeviceService, LinkStatus, Mode} from '../../services/linkdevice.service';
@@ -7,6 +7,7 @@ import {Subscription} from 'rxjs';
 import {PlayerSessionService} from '../../services/playersession.service';
 import {WebSocketService} from '../../services/websocket.service';
 import {LinkdeviceExchangeSession} from './linkdeviceExchangeSession';
+import {ToastComponent} from '../../Component/toast.component';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -21,12 +22,16 @@ enum StepsState {
   standalone: true,
   imports: [
     NgIf,
-    NgClass
+    NgClass,
+    ToastComponent
   ],
   templateUrl: './onlineLink.component.html'
 })
 
 export class OnlineLinkComponent {
+
+  @ViewChild(ToastComponent) toast!: ToastComponent;
+
   private linkDeviceService = inject(LinkDeviceService)
 
   protected sessionId: string | undefined = "";
@@ -44,15 +49,16 @@ export class OnlineLinkComponent {
     this.partnerSubscription = this.playerSessionService.partnerEvents$.subscribe(partnerConnected => {
       if (partnerConnected) {
         this.advanceLinkState(StepsState.SettingLinkMode);
-        this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService);
+        this.renewLinkSession();
       }
       else {
-        this.advanceLinkState(StepsState.WaitingForPartner);
+        this.toast.show("Partner has disconnected");
+        this.disconnect();
       }
     });
 
     this.linkSessionCloseSubscription = this.playerSessionService.sessionRenew$.subscribe(() => {
-      this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService);
+      this.renewLinkSession();
     });
   }
 
@@ -66,6 +72,7 @@ export class OnlineLinkComponent {
   ngOnDestroy() {
     this.partnerSubscription.unsubscribe();
     this.linkSessionCloseSubscription.unsubscribe();
+    this.linkSession?.destroy();
   }
 
   connect(): void {
@@ -84,80 +91,103 @@ export class OnlineLinkComponent {
     )
   }
 
-  async enableLinkMode():Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        subscription.unsubscribe();
-        reject(new Error('Timed out waiting for device to get ready'));
-      }, 2000);
-
-      const subscription = this.linkDeviceService.statusEvents$.subscribe(statusEvent => {
-        console.log(statusEvent);
-        if (statusEvent === LinkStatus.DeviceReady) {
-          clearTimeout(timeout);
-          subscription.unsubscribe();
-          resolve(true);
-        }
-      });
-
+  private sendCancel():Promise<void> {
+    return new Promise<void>((resolve, reject) => {
       this.linkDeviceService.sendCommand(CommandType.Cancel).then(ok => {
         if (!ok) {
-          clearTimeout(timeout);
-          subscription.unsubscribe();
           reject(new Error('Failed to send Cancel command'));
+        }
+        resolve();
+      });
+    });
+  }
+
+  private enableLinkMode():Promise<void> {
+    let args: Uint8Array = new Uint8Array(1);
+    args[0] = Mode.onlineLink;
+    return new Promise<void>((resolve, reject) => {
+      this.linkDeviceService.sendCommand(CommandType.SetMode, args).then(ok => {
+        if (!ok) {
+          reject(new Error('Failed to send SetMode command'));
+        }
+        resolve();
+      })
+    })
+  }
+
+   private createReadyPromise(timeoutMs = 2500): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const subscription = this.linkDeviceService.statusEvents$.subscribe(status => {
+        if (status === LinkStatus.DeviceReady) {
+          cleanup();
+          resolve();
         }
       });
 
-      let args: Uint8Array = new Uint8Array(1);
-      args[0] = Mode.onlineLink;
-      this.linkDeviceService.sendCommand(CommandType.SetMode, args).then(ok => {
-        if (!ok) {
-          clearTimeout(timeout);
-          subscription.unsubscribe();
-          reject(new Error('Failed to send SetMode command'));
-        }
-      })
+      const timer = setTimeout(() => {
+        cleanup();
+        reject(new Error('Timed out waiting for device to get ready'));
+      }, timeoutMs);
+
+      const cleanup = () => {
+        clearTimeout(timer);
+        subscription.unsubscribe();
+      };
     });
   }
 
   async start() {
-    let success = await this.enableLinkMode();
-    if (!success)
-    {
-      console.log("Failed to enable link mode");
-    }
-    this.stepState = StepsState.Ready;
+
+    const waitForReady = this.createReadyPromise();
+
+    this.sendCancel()
+      .then(() => this.enableLinkMode())
+      .then(() => waitForReady)
+      .then(() => this.stepState = StepsState.Ready)
+      .catch(error => {
+        this.toast.show(error.message, 'error', 4000)
+        console.error(error);
+        this.disconnect();
+      });
+
   }
 
   disconnect(): void {
     this.linkDeviceService.sendCommand(CommandType.Cancel);
     this.stepState = StepsState.JoiningSession;
     this.playerSessionService.leaveSession();
+    this.renewLinkSession();
     this.cd.detectChanges();
   }
 
   createSession() {
     this.playerSessionService.createSession().then(session => {
       this.sessionId = session.id;
+      this.renewLinkSession();
       this.advanceLinkState(StepsState.WaitingForPartner);
     });
   }
 
   joinSession(sessionId: string) {
     this.playerSessionService.joinSession(sessionId).then(session => {
-      this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService);
+      this.renewLinkSession();
       this.advanceLinkState(StepsState.SettingLinkMode);
-    });
-  }
-
-  renewSession() {
-    this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService);
+      this.sessionId = session.id;
+    }).catch(error => {
+      this.toast.show(error, 'error', 4000)
+      console.error(error);
+    })
   }
 
   leaveSession() {
     this.playerSessionService.leaveSession();
     this.advanceLinkState(StepsState.JoiningSession);
-    this.linkSession = undefined;
+    this.renewLinkSession();
+  }
+
+  renewLinkSession() {
+    this.linkSession?.destroy();
+    this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService);
   }
 
   protected hasReached(step: StepsState): boolean {
