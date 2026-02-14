@@ -128,4 +128,8 @@ export class LinkdeviceExchangeSession {
       () => console.log("Command send to Celio device failed with: ERROR")
     )
   }
+
+  destroy() {
+    this.subscriptions.unsubscribe();
+  }
 }
