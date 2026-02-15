@@ -1,18 +1,21 @@
-<div class="flex h-screen justify-center bg-base-200">
-  <ul class="menu bg-base-200 h-[15vh] w-[40vh]">
+<div class="flex h-[93vh] justify-start bg-base-200">
+  <ul class="menu flex-col bg-base-200 h-[15vh] min-h-[180px] w-[40vh]">
     <li class="flex-1">
-      <div class="box-menu">
-        <a routerLink="/onlineLink" class="w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
-          Online Play
-        </a>
-      </div>
+      <a routerLink="/onlineLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+        Online Play
+      </a>
     </li>
     <li class="flex-1">
-      <div class="box-menu">
-        <a routerLink="/tradeEmu" class="w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
-          Trade Emulation
-        </a>
-      </div>
+      <a routerLink="/tradeEmu" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+        Trade Emulation
+      </a>
     </li>
   </ul>
+</div>
+<div class="flex h-[7vh] justify-start bg-base-200">
+  <div class="flex-1 menu flex-col bg-base-200 h-[7vh] w-[40vh]">
+      <a href="https://github.com/Celio-Link/Celio-Client" target="_blank" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+        View on Github
+      </a>
+  </div>
 </div>

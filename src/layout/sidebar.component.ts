@@ -5,7 +5,7 @@ import {NgOptimizedImage} from '@angular/common';
 @Component({
   selector: 'app-sidebar',
   standalone: true,
-  imports: [RouterLink, RouterLinkActive, NgOptimizedImage],
+  imports: [RouterLink, RouterLinkActive],
   templateUrl: './sidebar.component.html'
 })
 export class SidebarComponent {}
