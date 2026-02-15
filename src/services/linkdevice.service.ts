@@ -142,7 +142,10 @@ export class LinkDeviceService {
     message.set(args, 1)
     try {
       const result: USBOutTransferResult = await this.device!.transferOut(this.statusEndpoint, message);
-      console.log("Send Command to device result :" + result);
+      if (result.status != "ok") {
+        console.log("Send Command to device result :" + JSON.stringify(result));
+      }
+
       return true;
     } catch (error) {
       console.error(error);

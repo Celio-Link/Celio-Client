@@ -2,8 +2,24 @@
   <!-- Sidebar -->
   <app-sidebar class="w-64 bg-base-300"></app-sidebar>
 
-  <!-- Main content -->
-  <div class="flex-1 p-6">
-    <router-outlet></router-outlet>
+  <!-- Main content column -->
+  <div class="flex-1 flex flex-col p-6">
+
+    <!-- Routed page content -->
+    <main class="flex-1">
+      <router-outlet></router-outlet>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer sm:footer-horizontal footer-center text-base-content p-4">
+      <aside>
+        <i class="text-gray-400">
+          I did it! I've managed to link up with Trainers in the Hoenn region!
+          Finally, the Network Machine is fully operational!
+          <cite class="ml-2 not-italic">— Celio</cite>
+        </i>
+      </aside>
+    </footer>
+
   </div>
 </div>

@@ -1,16 +1,21 @@
-<div class="flex h-screen justify-center bg-base-200">
-  <ul class="menu bg-base-200 h-[30vh] w-[15vh]">
+<div class="flex h-[93vh] justify-start bg-base-200">
+  <ul class="menu flex-col bg-base-200 h-[15vh] min-h-[180px] w-[40vh]">
     <li class="flex-1">
-      <a routerLink="/onlineLink" class="btn btn-square btn-lg w-full h-full" routerLinkActive="btn-disabled" [routerLinkActiveOptions]="{ exact: true }">
-        <img ngSrc="icons/onlinePlay.png" fill priority alt="Online Play"/>
+      <a routerLink="/onlineLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+        Online Play
       </a>
     </li>
-    <br>
     <li class="flex-1">
-      <a routerLink="/tradeEmu" class="btn btn-square btn-lg w-full h-full" routerLinkActive="btn-disabled" [routerLinkActiveOptions]="{ exact: true }">
-        <img ngSrc="icons/downloadPk3.png" fill priority alt="Trade Emulation"/>
+      <a routerLink="/tradeEmu" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+        Trade Emulation
       </a>
     </li>
-    <br>
   </ul>
+</div>
+<div class="flex h-[7vh] justify-start bg-base-200">
+  <div class="flex-1 menu flex-col bg-base-200 h-[7vh] w-[40vh]">
+      <a href="https://github.com/Celio-Link/Celio-Client" target="_blank" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+        View on Github
+      </a>
+  </div>
 </div>
