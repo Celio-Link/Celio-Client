@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'ws://localhost:8080'
+  apiUrl: 'ws://localhost:443'
 };
