@@ -7,7 +7,7 @@ import { environment } from '../environments/environment';
 @Injectable({  providedIn: 'root',})
 export class WebSocketService {
 
-  protected socket: Socket = io(environment.apiUrl, {
+  protected socket: Socket = io("wss://celio-server.up.railway.app:443", {
     transports: ["websocket"],
     autoConnect: false,
     // retries: 10,

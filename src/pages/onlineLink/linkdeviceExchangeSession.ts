@@ -3,9 +3,27 @@ import {WebSocketService} from '../../services/websocket.service';
 import {CommandType, DataArray, LinkDeviceService, LinkStatus} from '../../services/linkdevice.service';
 import {v4 as uuidv4} from 'uuid';
 
-export interface DataPacket {
-  sequence: number;
-  data: DataArray;
+export class DataPacket {
+  public sequence: number;
+  public data: DataArray;
+
+  constructor(sequence: number, data: DataArray) {
+    this.sequence = sequence;
+    this.data = data;
+  }
+
+  private dataToString(): string {
+    let out = "";
+    for (let i = 0; i < this.data.length; i++) {
+      if (i) out += " ";
+      out += "0x" + (this.data[i] & 0xffff).toString(16).padStart(4, "0").toUpperCase();
+    }
+    return out;
+  }
+
+  toString(): string {
+    return this.dataToString() + ", sequence = " + this.sequence;
+  }
 }
 
 interface CommandPacket {
@@ -40,7 +58,7 @@ export class LinkdeviceExchangeSession {
     }))
 
     this.subscriptions.add(this.websocketService.fromEventWithAck<DataPacket>('deviceData').subscribe(({data, ack}) => {
-      this.handleSocketDataToDevice(data);
+      this.handleSocketDataToDevice(new DataPacket(data.sequence, data.data));
       ack(true); //FIXME better ack handling
     }))
 
@@ -56,10 +74,12 @@ export class LinkdeviceExchangeSession {
 
   handleDeviceDataToSocket(data: DataArray) {
     const queued = this.deviceQueue.shift();
-    console.log("Device queue status: " + JSON.stringify(this.deviceQueue));
+    if (this.deviceQueue.length > 10){
+      console.warn("Queue status: " + JSON.stringify(this.deviceQueue));
+    }
     if (queued) {
       this.linkDeviceService.sendData(queued).then(
-        () => console.log("Transmit data to device: ", queued),
+        null,
         () => {
           console.log("Transmit data to device: ERROR, Unshift data to queue...");
           this.deviceQueue.unshift(queued);
@@ -70,14 +90,14 @@ export class LinkdeviceExchangeSession {
     if (data[0] == 0x00) return;
     if ((data[0] == 0xCAFE) && (data[1] == 0x11)) return;
 
-    let packet: DataPacket = {sequence: this.transmittedPacketCounter, data: data};
+    let packet: DataPacket = new DataPacket(this.transmittedPacketCounter, data);
     this.websocketService.emit('deviceData', packet);
     this.transmittedPacketCounter++;
-    console.log("Send data to socket " + JSON.stringify(packet))
+    console.log("Outgoing: " + packet.toString());
   }
 
   handleSocketDataToDevice(packet: DataPacket) {
-    console.log("Received data packet from socket: " + JSON.stringify(packet));
+    console.log("Incoming: " + packet.toString());
     if (this.expectedPacketSequence > packet.sequence) {
       console.warn("Received data packet has already been received, discarding...");
       return;

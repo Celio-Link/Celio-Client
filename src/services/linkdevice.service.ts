@@ -3,7 +3,6 @@ import { Subject } from 'rxjs';
 
 export type UInt16 = number & { __uint16: true };
 export type DataArray = [UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16];
-export type DataHandler = (data: DataArray) => void;
 
 export enum LinkStatus {
 
@@ -119,19 +118,17 @@ export class LinkDeviceService {
   sendData(data: DataArray) : Promise<boolean> {
     const uint16Array = new Uint16Array(data);
     return this.device!.transferOut(this.dataEndpoint, uint16Array).then(
-      (result: USBOutTransferResult) => {console.log(result); return true },
+      (result: USBOutTransferResult) => {return true },
       (err: Error) => {console.log(err); return false;})
   }
 
   async sendDataRaw(data: Uint8Array): Promise<boolean> {
     if (data.length > 64) return false;
     try {
-      const result: USBOutTransferResult =
-        await this.device!.transferOut(this.dataEndpoint, data);
-      console.log("Send raw data to device result: " + result);
+      const result: USBOutTransferResult = await this.device!.transferOut(this.dataEndpoint, data);
       return true;
     } catch (error) {
-      console.error(error);
+      console.error("Error when sending raw data to device: " + JSON.stringify(error));
       return false;
     }
   }
