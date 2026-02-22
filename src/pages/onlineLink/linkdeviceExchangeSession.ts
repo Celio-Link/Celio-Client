@@ -16,13 +16,14 @@ export class DataPacket {
     let out = "";
     for (let i = 0; i < this.data.length; i++) {
       if (i) out += " ";
+      if (i % 8 == 0) out += "\n";
       out += "0x" + (this.data[i] & 0xffff).toString(16).padStart(4, "0").toUpperCase();
     }
     return out;
   }
 
   toString(): string {
-    return this.dataToString() + ", sequence = " + this.sequence;
+    return "Sequence = " + this.sequence + this.dataToString();
   }
 }
 
@@ -73,6 +74,25 @@ export class LinkdeviceExchangeSession {
   }
 
   handleDeviceDataToSocket(data: DataArray) {
+    let packet: DataPacket = new DataPacket(this.transmittedPacketCounter, data);
+    this.websocketService.emit('deviceData', packet);
+    this.transmittedPacketCounter++;
+    console.log("%c Outgoing: " + packet.toString(), 'color: #3366ff');
+  }
+
+  handleSocketDataToDevice(packet: DataPacket) {
+    console.log("%c Incoming: " + packet.toString(), 'color: #00cc66');
+    if (this.expectedPacketSequence > packet.sequence) {
+      console.warn("Received data packet has already been received, discarding...");
+      return;
+    }
+    else if (this.expectedPacketSequence < packet.sequence) {
+      console.warn("Received data out of order, saved to queue " + JSON.stringify(packet));
+      return this.handleOutOfOrderPaket(packet)
+    }
+
+    this.deviceQueue.push(packet.data);
+
     const queued = this.deviceQueue.shift();
     if (this.deviceQueue.length > 10){
       console.warn("Queue status: " + JSON.stringify(this.deviceQueue));
@@ -87,27 +107,6 @@ export class LinkdeviceExchangeSession {
       );
     }
 
-    if (data[0] == 0x00) return;
-    if ((data[0] == 0xCAFE) && (data[1] == 0x11)) return;
-
-    let packet: DataPacket = new DataPacket(this.transmittedPacketCounter, data);
-    this.websocketService.emit('deviceData', packet);
-    this.transmittedPacketCounter++;
-    console.log("Outgoing: " + packet.toString());
-  }
-
-  handleSocketDataToDevice(packet: DataPacket) {
-    console.log("Incoming: " + packet.toString());
-    if (this.expectedPacketSequence > packet.sequence) {
-      console.warn("Received data packet has already been received, discarding...");
-      return;
-    }
-    else if (this.expectedPacketSequence < packet.sequence) {
-      console.warn("Received data out of order, saved to queue " + JSON.stringify(packet));
-      return this.handleOutOfOrderPaket(packet)
-    }
-
-    this.deviceQueue.push(packet.data);
     this.expectedPacketSequence++;
   }
 

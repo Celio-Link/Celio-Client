@@ -96,12 +96,12 @@ export class LinkDeviceService {
 
   readData() {
     this.device!.transferIn(this.dataEndpoint, this.endPointBufferSize).then((result: USBInTransferResult) => {
-      if (result.data?.byteLength == 16) {
-        const uint16Array = new Uint16Array(result.data.buffer, result.data.byteOffset, 8);
+      if (result.data && result.data.byteLength == 64) {
+        const uint16Array = new Uint16Array(result.data.buffer, result.data.byteOffset, 32);
         const dataArray = Array.from(uint16Array) as DataArray;
         this.dataEventSubject.next(dataArray);
-        this.readData()
       }
+      this.readData()
     }, (err: Error) => {console.log(err)})
   }
 
