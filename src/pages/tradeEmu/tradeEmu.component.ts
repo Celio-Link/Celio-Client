@@ -43,9 +43,8 @@ export class TradeEmuComponent {
     })
 
     this.statusSubscription = this.linkDeviceService.statusEvents$.subscribe(statusEvents => {
-      console.log(statusEvents);
+      console.log("Status: " + LinkStatus[statusEvents]);
       if (statusEvents === LinkStatus.EmuTradeSessionFinished) {
-        console.log("Trade session finished");
         this.pkmFiles = [];
         this.stepState = StepsState.SelectingPokemon;
         this.cd.detectChanges();
@@ -106,7 +105,6 @@ export class TradeEmuComponent {
       }, 2000);
 
       const subscription = this.linkDeviceService.statusEvents$.subscribe(statusEvent => {
-        console.log(statusEvent);
         if (statusEvent === LinkStatus.DeviceReady) {
           clearTimeout(timeout);
           subscription.unsubscribe();
