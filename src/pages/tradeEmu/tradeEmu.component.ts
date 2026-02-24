@@ -3,6 +3,7 @@ import {NgClass, NgForOf, NgIf} from '@angular/common';
 import {CommandType, DataArray, LinkDeviceService, LinkStatus, Mode} from '../../services/linkdevice.service';
 import {Subscription} from 'rxjs';
 import {PkmnFile} from './pkmnFile';
+import {environment} from '../../environments/environment';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -167,6 +168,9 @@ export class TradeEmuComponent {
 
   @HostListener('document:keydown', ['$event'])
   protected handleKeyboardEvent(event: KeyboardEvent) {
+
+    if (environment.production) return;
+
     if (event.key === 'ArrowUp') {
       this.stepState++;
     }
