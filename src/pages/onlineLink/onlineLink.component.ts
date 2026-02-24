@@ -8,6 +8,7 @@ import {PlayerSessionService} from '../../services/playersession.service';
 import {WebSocketService} from '../../services/websocket.service';
 import {LinkdeviceExchangeSession} from './linkdeviceExchangeSession';
 import {ToastComponent} from '../../Component/toast.component';
+import {environment} from '../../environments/environment';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -41,6 +42,7 @@ export class OnlineLinkComponent {
 
   private partnerSubscription: Subscription
   private linkSessionCloseSubscription: Subscription
+  private disconnectSubscription: Subscription;
 
   private linkSession: LinkdeviceExchangeSession | undefined = undefined;
   protected webUsbError: boolean = false;
@@ -57,8 +59,15 @@ export class OnlineLinkComponent {
       }
     });
 
+    this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(disconnect => {
+      this.stepState = StepsState.ConnectingCelioDevice;
+      this.playerSessionService.leaveSession();
+      this.linkSession?.destroy();
+      this.cd.detectChanges();
+    })
+
     this.linkSessionCloseSubscription = this.playerSessionService.sessionRenew$.subscribe(() => {
-      this.renewLinkSession();
+      this.disconnect();
     });
   }
 
@@ -72,6 +81,7 @@ export class OnlineLinkComponent {
   ngOnDestroy() {
     this.partnerSubscription.unsubscribe();
     this.linkSessionCloseSubscription.unsubscribe();
+    this.disconnectSubscription.unsubscribe();
     this.linkSession?.destroy();
   }
 
@@ -205,6 +215,9 @@ export class OnlineLinkComponent {
 
   @HostListener('document:keydown', ['$event'])
   protected handleKeyboardEvent(event: KeyboardEvent) {
+
+    if (environment.production) return;
+
     if (event.key === 'ArrowUp') {
       this.stepState++;
     }

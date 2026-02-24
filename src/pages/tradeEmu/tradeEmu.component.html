@@ -69,7 +69,7 @@
   <div [class.opacity-100]="hasReached(StepsState.UploadingPokemon)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
       <div class="card rounded-box grid h-20 grow place-items-center">
-        <button (click)="upload()" class="btn btn-lg">Upload Pokémon</button>
+        <button (click)="upload()" class="btn btn-lg" [disabled]="!isCurrentlyIn(StepsState.UploadingPokemon)">Upload Pokémon</button>
       </div>
       <img *ngIf="isCurrentlyIn(StepsState.UploadingPokemon)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
     </div>
@@ -78,8 +78,7 @@
   <div *ngIf="hasReached(StepsState.Ready)"
        class="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center transition-opacity duration-500 ease-in-out">
 
-    <div class="card rounded-box bg-white h-auto w-full max-w-screen-xl mx-auto flex flex-col items-center justify-between p-8 relative">
-
+    <div class="card rounded-box bg-white min-w-[75em] h-auto max-w-screen-xl mx-auto flex flex-col items-center justify-between p-8 relative">
 
       <div class="flex justify-between items-center w-full relative">
         <img src="assets/PC.png" class="image-pixelated h-48 w-auto relative ml-[8rem] bottom-1"/>
