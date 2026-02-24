@@ -2,7 +2,12 @@ import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
 
 export type UInt16 = number & { __uint16: true };
-export type DataArray = [UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16];
+export type DataArray = [
+  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
+  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
+  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
+  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16
+];
 
 export enum LinkStatus {
 
