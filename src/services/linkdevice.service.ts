@@ -41,7 +41,7 @@ export enum Mode {
 
 export type StatusHandler = (status: LinkStatus) => void;
 
-@Injectable({  providedIn: 'root',})
+@Injectable({  providedIn: 'root' })
 export class LinkDeviceService {
   private device: USBDevice | undefined = undefined;
 

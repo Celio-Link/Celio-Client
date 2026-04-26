@@ -1,0 +1,138 @@
+<div class="flex w-full flex-col">
+  <ul class="steps w-full">
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect Celio Device</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Choose Emulator</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Load Script</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait for Server</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Start Link Mode</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 5 }">Ready</li>
+  </ul>
+
+  <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
+  <div class="divider"></div>
+
+  <div class="box relative">
+    <div class="flex w-full h-[5rem]">
+      <div *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" class="card rounded-box grid grow place-items-center">
+        <button (click)="connect()" class="btn btn-lg">Connect Celio Device</button>
+      </div>
+      <div *ngIf="hasReached(StepsState.ChooseEmulator)" class="font-Gen3 text-4xl">
+        Celio USB connection status: <br>
+        Ready!
+      </div>
+      <div *ngIf="webUsbError" class="font-Gen3 text-4xl">
+        Web USB is not supported by this browser. Firefox sadly does not support web USB currently.<br>
+        Please use Chrome or another Chromium based browser.
+      </div>
+    </div>
+    <img *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+  </div>
+
+  <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
+
+  <div class="divider"></div>
+
+  <div [class.opacity-100]="hasReached(StepsState.ChooseEmulator)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+    <div class="box relative">
+
+      <div *ngIf="isCurrentlyIn(StepsState.ChooseEmulator)" class="flex w-full h-[5rem]">
+        <div class="font-Gen3 text-4xl">
+          Select Emulator (currently only mGBA is supported):
+        </div>
+        <button (click)="emulatorSelected(SupportedEmulators.mGBA)" class="btn btn-sm text-2xl absolute bottom-3 left-2">mGBA</button>
+      </div>
+
+      <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex w-full h-[5rem]">
+        <div *ngIf="hasReached(StepsState.ChooseEmulator)" class="font-Gen3 text-4xl">
+          Selected emulator: <br>
+          mGBA
+        </div>
+      </div>
+      <img *ngIf="isCurrentlyIn(StepsState.ChooseEmulator)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+
+    </div>
+    <div class="divider"></div>
+  </div>
+
+  <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
+
+  <div [class.opacity-100]="hasReached(StepsState.DownloadPlugin)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+    <div class="box relative">
+
+      <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex w-full h-[5rem]">
+        <div class="font-Gen3 text-4xl">
+          Load via Tools → Scripting... → File → Load script...<br>
+          <button (click)="emulatorSelected(SupportedEmulators.mGBA)" class="btn btn-sm text-2xl absolute bottom-3 left-2">Download plugin</button>
+          <button *ngIf=isCurrentlyIn(StepsState.DownloadPlugin) (click)="startWaitForServer()" class="btn btn-sm text-2xl absolute bottom-3 right-10">Next Step</button>
+        </div>
+      </div>
+
+      <img *ngIf="isCurrentlyIn(StepsState.DownloadPlugin)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+
+    </div>
+    <div class="divider"></div>
+  </div>
+
+  <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
+
+  <div [class.opacity-100]="hasReached(StepsState.WaitForLocalServer)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+    <div class="box relative">
+      <div *ngIf="isCurrentlyIn(StepsState.WaitForLocalServer)" class="flex w-full h-[5rem]">
+        <p class="font-Gen3 text-4xl waiting">
+          Waiting for Server to start<span class="dots"></span>
+        </p>
+      </div>
+      <div *ngIf="hasReached(StepsState.SettingLinkMode)" class="flex w-full h-[5rem]">
+        <p class="font-Gen3 text-4xl waiting">
+          Server status: <br>
+          Connected!
+        </p>
+      </div>
+    </div>
+    <div class="divider"></div>
+  </div>
+
+  <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
+
+  <div [class.opacity-100]="hasReached(StepsState.SettingLinkMode)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+    <div class="box relative">
+      <div class="flex w-full h-[5rem]">
+        <div class="card rounded-box grid h-20 grow place-items-center">
+          <button (click)="start()" class="btn btn-lg" [disabled]="!isCurrentlyIn(StepsState.SettingLinkMode)">Start</button>
+        </div>
+        <img *ngIf="isCurrentlyIn(StepsState.SettingLinkMode)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+      </div>
+    </div>
+  </div>
+
+  <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
+
+  <div *ngIf="hasReached(StepsState.Ready)"
+       class="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center transition-opacity duration-500 ease-in-out">
+
+    <div class="card rounded-box bg-white min-w-[75em] h-auto max-w-screen-xl mx-auto flex flex-col items-center justify-between p-8 relative">
+
+
+      <div class="flex justify-between items-center w-full relative">
+        <img src="assets/PC.png" class="image-pixelated h-48 w-auto relative ml-[8rem] bottom-1"/>
+        <div class="bg-black h-2 w-[100%] relative"></div>
+        <button (click)="disconnect()" class="btn btn-lg btn-dash btn-error mt-8 relative bottom-4">
+          Disconnect
+        </button>
+        <div class="bg-black h-2 w-[100%] relative -mr-[12px]"></div>
+        <img src="assets/GBA.png" class="image-pixelated h-48 w-auto relative mr-[8rem]"/>
+      </div>
+
+      <div class="box mt-12 font-Gen3 text-4xl">
+        Link Mode is now ready! If you haven't already, connect the <br>
+        Link-Cable to your Gameboy Advance and talk to the Pokémon Center clerk.
+      </div>
+    </div>
+  </div>
+
+  <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
+
+</div>
+
+<app-toast></app-toast>
+

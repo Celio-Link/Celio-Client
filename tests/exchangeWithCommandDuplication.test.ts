@@ -2,7 +2,7 @@ import {expect, test} from 'vitest';
 import {CommandType, DataArray, LinkDeviceServiceMock} from './mocks/service/linkdevice.service.mock';
 import {WebSocketService} from '../src/services/websocket.service';
 import {PlayerSessionService} from '../src/services/playersession.service';
-import { LinkdeviceExchangeSession, StatusPacket } from '../src/pages/onlineLink/linkdeviceExchangeSession';
+import { LinkdeviceExchangeSession, StatusPacket } from '../src/shared/linkdeviceExchangeSession';
 import {LinkStatus} from '../src/services/linkdevice.service';
 import {v4 as uuidv4} from 'uuid';
 import {CelioDeviceMock} from './mocks/celioDeviceMock';

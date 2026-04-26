@@ -2,7 +2,7 @@ import {expect, test} from 'vitest';
 import {DataArray, LinkDeviceServiceMock} from './mocks/service/linkdevice.service.mock';
 import {WebSocketService} from '../src/services/websocket.service';
 import {PlayerSessionService} from '../src/services/playersession.service';
-import {DataPacket, LinkdeviceExchangeSession} from '../src/pages/onlineLink/linkdeviceExchangeSession';
+import {DataPacket, LinkdeviceExchangeSession} from '../src/shared/linkdeviceExchangeSession';
 import {CelioDeviceMock} from './mocks/celioDeviceMock';
 
 export class LinkDeviceExchangeMockDuplication extends LinkdeviceExchangeSession {

@@ -10,8 +10,6 @@ export class WebSocketService {
   protected socket: Socket = io(environment.apiUrl, {
     transports: ["websocket"],
     autoConnect: false,
-    // retries: 10,
-    // ackTimeout: 5000,
     reconnectionAttempts: 4,
     reconnectionDelay: 100,
     reconnectionDelayMax: 1000,

@@ -6,9 +6,11 @@ import {CommandType, LinkDeviceService, LinkStatus, Mode} from '../../services/l
 import {Subscription} from 'rxjs';
 import {PlayerSessionService} from '../../services/playersession.service';
 import {WebSocketService} from '../../services/websocket.service';
-import {LinkdeviceExchangeSession} from './linkdeviceExchangeSession';
-import {ToastComponent} from '../../Component/toast.component';
+import {LinkdeviceExchangeSession} from '../../shared/linkdeviceExchangeSession';
+import {ToastComponent} from '../../component/toast.component';
 import {environment} from '../../environments/environment';
+import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
+import {SocketIOBridge} from '../../shared/bridges/socketIO.bridge';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -101,65 +103,16 @@ export class OnlineLinkComponent {
     )
   }
 
-  private sendCancel():Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      this.linkDeviceService.sendCommand(CommandType.Cancel).then(ok => {
-        if (!ok) {
-          reject(new Error('Failed to send Cancel command'));
-        }
-        resolve();
-      });
-    });
-  }
-
-  private enableLinkMode():Promise<void> {
-    let args: Uint8Array = new Uint8Array(1);
-    args[0] = Mode.onlineLink;
-    return new Promise<void>((resolve, reject) => {
-      this.linkDeviceService.sendCommand(CommandType.SetMode, args).then(ok => {
-        if (!ok) {
-          reject(new Error('Failed to send SetMode command'));
-        }
-        resolve();
+  start() {
+    LinkDeviceUtils.tryEnableLinkMode(this.linkDeviceService)
+      .then(() => {
+        this.stepState = StepsState.Ready;
       })
-    })
-  }
-
-   private createReadyPromise(timeoutMs = 2500): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      const subscription = this.linkDeviceService.statusEvents$.subscribe(status => {
-        if (status === LinkStatus.DeviceReady) {
-          cleanup();
-          resolve();
-        }
-      });
-
-      const timer = setTimeout(() => {
-        cleanup();
-        reject(new Error('Timed out waiting for device to get ready'));
-      }, timeoutMs);
-
-      const cleanup = () => {
-        clearTimeout(timer);
-        subscription.unsubscribe();
-      };
-    });
-  }
-
-  async start() {
-
-    const waitForReady = this.createReadyPromise();
-
-    this.sendCancel()
-      .then(() => this.enableLinkMode())
-      .then(() => waitForReady)
-      .then(() => this.stepState = StepsState.Ready)
       .catch(error => {
-        this.toast.show(error.message, 'error', 4000)
+        this.toast.show(error, 'error', 4000)
         console.error(error);
         this.disconnect();
-      });
-
+      })
   }
 
   disconnect(): void {
@@ -197,7 +150,7 @@ export class OnlineLinkComponent {
 
   renewLinkSession() {
     this.linkSession?.destroy();
-    this.linkSession = new LinkdeviceExchangeSession(this.socket, this.linkDeviceService);
+    this.linkSession = new LinkdeviceExchangeSession(new SocketIOBridge(this.socket), this.linkDeviceService);
   }
 
   protected hasReached(step: StepsState): boolean {

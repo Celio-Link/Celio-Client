@@ -1,7 +1,7 @@
 import { test, expect } from "vitest";
 import { PlayerSessionService } from "../src/services/playersession.service.js";
 import { WebSocketService } from "../src/services/websocket.service.js";
-import { LinkdeviceExchangeSession } from '../src/pages/onlineLink/linkdeviceExchangeSession';
+import { LinkdeviceExchangeSession } from '../src/shared/linkdeviceExchangeSession';
 import { LinkDeviceServiceMock, DataArray } from "./mocks/service/linkdevice.service.mock";
 import { CelioDeviceMock } from './mocks/celioDeviceMock';
 

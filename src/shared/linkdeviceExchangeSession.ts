@@ -1,41 +1,8 @@
 import {Subscription} from 'rxjs';
-import {WebSocketService} from '../../services/websocket.service';
-import {CommandType, DataArray, LinkDeviceService, LinkStatus} from '../../services/linkdevice.service';
+import {CommandType, DataArray, LinkDeviceService, LinkStatus} from '../services/linkdevice.service';
+import {CommandPacket, DataPacket, ISocketBridge, StatusPacket} from './socketBridge.interface';
 import {v4 as uuidv4} from 'uuid';
 
-export class DataPacket {
-  public sequence: number;
-  public data: DataArray;
-
-  constructor(sequence: number, data: DataArray) {
-    this.sequence = sequence;
-    this.data = data;
-  }
-
-  private dataToString(): string {
-    let out = "";
-    for (let i = 0; i < this.data.length; i++) {
-      if (i) out += " ";
-      if (i % 8 == 0) out += "\n";
-      out += "0x" + (this.data[i] & 0xffff).toString(16).padStart(4, "0").toUpperCase();
-    }
-    return out;
-  }
-
-  toString(): string {
-    return "Sequence = " + this.sequence + this.dataToString();
-  }
-}
-
-interface CommandPacket {
-  uuid: string;
-  command: CommandType;
-}
-
-export interface StatusPacket {
-  uuid: string;
-  linkStatus: LinkStatus;
-}
 
 export class LinkdeviceExchangeSession {
 
@@ -49,7 +16,7 @@ export class LinkdeviceExchangeSession {
   private expectedPacketSequence = 0;
   protected transmittedPacketCounter = 0;
 
-  constructor(protected websocketService: WebSocketService, protected linkDeviceService: LinkDeviceService) {
+  constructor(protected socketBridge: ISocketBridge, protected linkDeviceService: LinkDeviceService) {
     this.subscriptions.add(linkDeviceService.statusEvents$.subscribe(status => {
       this.handleDeviceStatusToSocket(status);
     }))
@@ -58,16 +25,15 @@ export class LinkdeviceExchangeSession {
       this.handleDeviceDataToSocket(data);
     }))
 
-    this.subscriptions.add(this.websocketService.fromEventWithAck<DataPacket>('deviceData').subscribe(({data, ack}) => {
+    this.subscriptions.add(this.socketBridge.data$().subscribe((data: DataPacket) => {
       this.handleSocketDataToDevice(new DataPacket(data.sequence, data.data));
-      ack(true); //FIXME better ack handling
     }))
 
-    this.subscriptions.add(this.websocketService.fromEvent<CommandPacket>('deviceCommand').subscribe((commandPacket: CommandPacket) => {
+    this.subscriptions.add(this.socketBridge.command$().subscribe((commandPacket: CommandPacket) => {
       this.handleSocketCommandToDevice(commandPacket)
     }))
 
-    this.subscriptions.add(this.websocketService.fromEvent<void>('sessionClose').subscribe(() => {
+    this.subscriptions.add(this.socketBridge.close$().subscribe(() => {
       console.log("LinkSession: Unsubscribing from events...");
       this.subscriptions.unsubscribe();
     }))
@@ -75,7 +41,7 @@ export class LinkdeviceExchangeSession {
 
   handleDeviceDataToSocket(data: DataArray) {
     let packet: DataPacket = new DataPacket(this.transmittedPacketCounter, data);
-    this.websocketService.emit('deviceData', packet);
+    this.socketBridge.sendData(packet);
     this.transmittedPacketCounter++;
     console.log("%c Outgoing: " + packet.toString(), 'color: #3366ff');
   }
@@ -134,7 +100,7 @@ export class LinkdeviceExchangeSession {
     }
 
     const statusPacket: StatusPacket = { uuid: uuidv4(), linkStatus: status };
-    this.websocketService.emit('deviceStatus', statusPacket);
+    this.socketBridge.sendStatus(statusPacket);
   }
 
   handleSocketCommandToDevice(commandPacket: CommandPacket) {
@@ -150,5 +116,6 @@ export class LinkdeviceExchangeSession {
 
   destroy() {
     this.subscriptions.unsubscribe();
+    this.socketBridge.destroy();
   }
 }
