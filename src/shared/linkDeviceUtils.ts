@@ -1,4 +1,6 @@
-import {CommandType, LinkDeviceService, LinkStatus, Mode} from '../services/linkdevice.service';
+import {CommandType, LinkStatus, Mode} from './linkExchange/common';
+import {LinkDeviceService} from '../services/linkdevice.service';
+
 
 export class LinkDeviceUtils {
   private static sendCancel(linkDeviceService: LinkDeviceService):Promise<void> {

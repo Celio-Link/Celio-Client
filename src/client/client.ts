@@ -1,4 +1,4 @@
-import { DataArray } from '../services/linkdevice.service';
+import {DataArray} from '../shared/linkExchange/common';
 
 export type ClientHandler = (message: any) => void;
 

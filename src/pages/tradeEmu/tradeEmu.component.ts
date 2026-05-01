@@ -1,9 +1,10 @@
 import {Component, inject, ChangeDetectorRef, HostListener} from '@angular/core';
 import {NgClass, NgForOf, NgIf} from '@angular/common';
-import {CommandType, DataArray, LinkDeviceService, LinkStatus, Mode} from '../../services/linkdevice.service';
+import {CommandType, DataArray, LinkStatus, Mode} from '../../shared/linkExchange/common';
 import {Subscription} from 'rxjs';
 import {PkmnFile} from './pkmnFile';
 import {environment} from '../../environments/environment';
+import {LinkDeviceService} from '../../services/linkdevice.service';
 
 enum StepsState {
   ConnectingCelioDevice = 0,

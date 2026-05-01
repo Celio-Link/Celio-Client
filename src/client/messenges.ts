@@ -1,4 +1,5 @@
-import { LinkStatus, CommandType } from '../services/linkdevice.service';
+import {CommandType, LinkStatus} from '../shared/linkExchange/common';
+
 
 export enum ErrorType {
   ClientNotFound = 'client-not-found',

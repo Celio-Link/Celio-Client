@@ -1,9 +1,9 @@
-import {CommandPacket, DataPacket, ISocketBridge, StatusPacket} from '../socketBridge.interface'
+import {CommandEmitterInterface} from './commandEmitter.interface'
 import {Observable, Subject} from 'rxjs';
-import {CommandType, DataArray, LinkStatus, UInt16} from '../../services/linkdevice.service';
+import {CommandType, DataArray, UInt16, CommandPacket, DataPacket, StatusPacket} from '../common';
 import {v4 as uuidv4} from 'uuid';
 
-export class WebsocketBridge implements ISocketBridge {
+export class CommandEmitterWebsocket implements CommandEmitterInterface {
 
   private readonly closeSubject = new Subject<void>();
   private readonly commandSubject = new Subject<CommandPacket>();

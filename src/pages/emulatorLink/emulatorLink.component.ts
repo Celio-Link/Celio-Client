@@ -1,12 +1,14 @@
 import {Component, inject, ChangeDetectorRef, HostListener, ViewChild} from '@angular/core';
 import {NgClass, NgIf} from '@angular/common';
-import {CommandType, DataArray, LinkDeviceService, LinkStatus, Mode} from '../../services/linkdevice.service';
+import {CommandType, DataArray, LinkStatus, Mode} from '../../shared/linkExchange/common';
+import {LinkDeviceService} from '../../services/linkdevice.service';
 import {Subscription, take} from 'rxjs';
 import {environment} from '../../environments/environment';
-import {LinkdeviceExchangeSession} from '../../shared/linkdeviceExchangeSession';
-import {WebsocketBridge} from '../../shared/bridges/websocket.bridge';
+import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
+import {CommandEmitterWebsocket} from '../../shared/linkExchange/commandEmitter/commandEmitter.websocket';
 import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
 import {ToastComponent} from '../../component/toast.component';
+import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -45,7 +47,7 @@ export class EmulatorLinkComponent {
   protected closing: boolean = false;
   protected timeoutId: number | undefined; //this is trash, pls fix
 
-  private linkSession: LinkdeviceExchangeSession | undefined = undefined;
+  private linkSession: LinkExchangeSession | undefined = undefined;
 
   private disconnectSubscription: Subscription;
   private statusSubscription: Subscription
@@ -108,9 +110,9 @@ export class EmulatorLinkComponent {
 
     this.stepState = StepsState.WaitForLocalServer;
     this.cd.detectChanges();
-    let websocketBridge: WebsocketBridge = new WebsocketBridge();
+    let websocketBridge: CommandEmitterWebsocket = new CommandEmitterWebsocket();
     this.linkSession?.destroy();
-    this.linkSession = new LinkdeviceExchangeSession(websocketBridge, this.linkDeviceService);
+    this.linkSession = new LinkExchangeSession(websocketBridge, new StatusEmitterLinkDevice(this.linkDeviceService));
     websocketBridge.close$()
       .pipe(take(1))
       .subscribe(() => {

@@ -1,8 +1,9 @@
-import {CommandPacket, DataPacket, ISocketBridge, StatusPacket} from '../socketBridge.interface'
+import {CommandPacket, DataPacket, StatusPacket} from '../common'
+import {CommandEmitterInterface} from './commandEmitter.interface'
 import {Observable, Subject, Subscription} from 'rxjs';
-import {WebSocketService} from '../../services/websocket.service';
+import {WebSocketService} from '../../../services/websocket.service';
 
-export class SocketIOBridge implements ISocketBridge {
+export class CommandEmitterSocketIO implements CommandEmitterInterface {
 
   private subscriptions = new Subscription();
   private readonly closeSubject = new Subject<void>();

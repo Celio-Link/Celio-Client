@@ -1,16 +1,18 @@
 import {ChangeDetectorRef, Component, HostListener, inject, ViewChild} from '@angular/core';
 import { NgClass, NgIf } from '@angular/common';
 
-import {CommandType, LinkDeviceService, LinkStatus, Mode} from '../../services/linkdevice.service';
+import {CommandType} from '../../shared/linkExchange/common';
 
 import {Subscription, take} from 'rxjs';
 import {PlayerSessionService} from '../../services/playersession.service';
 import {WebSocketService} from '../../services/websocket.service';
-import {LinkdeviceExchangeSession} from '../../shared/linkdeviceExchangeSession';
+import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
 import {ToastComponent} from '../../component/toast.component';
 import {environment} from '../../environments/environment';
 import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
-import {SocketIOBridge} from '../../shared/bridges/socketIO.bridge';
+import {CommandEmitterSocketIO} from '../../shared/linkExchange/commandEmitter/commandEmitter.socketIO';
+import {LinkDeviceService} from '../../services/linkdevice.service';
+import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -46,7 +48,7 @@ export class OnlineLinkComponent {
   private linkSessionCloseSubscription: Subscription
   private disconnectSubscription: Subscription;
 
-  private linkSession: LinkdeviceExchangeSession | undefined = undefined;
+  private linkSession: LinkExchangeSession | undefined = undefined;
   protected webUsbError: boolean = false;
 
   constructor(private cd: ChangeDetectorRef, private playerSessionService: PlayerSessionService, private socket: WebSocketService) {
@@ -151,7 +153,7 @@ export class OnlineLinkComponent {
 
   renewLinkSession() {
     this.linkSession?.destroy();
-    this.linkSession = new LinkdeviceExchangeSession(new SocketIOBridge(this.socket), this.linkDeviceService);
+    this.linkSession = new LinkExchangeSession(new CommandEmitterSocketIO(this.socket), new StatusEmitterLinkDevice(this.linkDeviceService));
   }
 
   protected hasReached(step: StepsState): boolean {

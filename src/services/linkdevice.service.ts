@@ -1,45 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
-
-export type UInt16 = number & { __uint16: true };
-export type DataArray = [
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16
-];
-
-export enum LinkStatus {
-
-  AwaitMode = 0xFF02,
-  HandshakeReceived = 0xFF03,
-  HandshakeFinished = 0xFF04,
-
-  LinkConnected = 0xFF05,
-  LinkReconnecting = 0xFF06,
-  LinkClosed = 0xFF07,
-
-  DeviceReady = 0xFF08,
-  EmuTradeSessionFinished = 0xFF09,
-
-  StatusDebug = 0xFFFF
-}
-
-export enum CommandType {
-  SetMode = 0x00,
-  Cancel = 0x01,
-  SetModeMaster = 0x10,
-  SetModeSlave = 0x11,
-  StartHandshake= 0x12,
-  ConnectLink = 0x13
-}
-
-export enum Mode {
-  tradeEmu = 0x00,
-  onlineLink = 0x01
-}
-
-export type StatusHandler = (status: LinkStatus) => void;
+import {CommandType, DataArray, LinkStatus} from '../shared/linkExchange/common';
 
 @Injectable({  providedIn: 'root' })
 export class LinkDeviceService {
