@@ -3,7 +3,7 @@ import { NgClass, NgIf } from '@angular/common';
 
 import {CommandType, LinkDeviceService, LinkStatus, Mode} from '../../services/linkdevice.service';
 
-import {Subscription} from 'rxjs';
+import {Subscription, take} from 'rxjs';
 import {PlayerSessionService} from '../../services/playersession.service';
 import {WebSocketService} from '../../services/websocket.service';
 import {LinkdeviceExchangeSession} from '../../shared/linkdeviceExchangeSession';
@@ -53,30 +53,31 @@ export class OnlineLinkComponent {
     this.partnerSubscription = this.playerSessionService.partnerEvents$.subscribe(partnerConnected => {
       if (partnerConnected) {
         this.advanceLinkState(StepsState.SettingLinkMode);
-        this.renewLinkSession();
       }
       else {
         this.toast.show("Partner has disconnected");
-        this.disconnect();
+        this.advanceLinkState(StepsState.WaitingForPartner);
       }
     });
 
     this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(disconnect => {
-      this.stepState = StepsState.ConnectingCelioDevice;
       this.playerSessionService.leaveSession();
+      this.socket.disconnect();
       this.linkSession?.destroy();
-      this.cd.detectChanges();
+      this.advanceLinkState(StepsState.ConnectingCelioDevice);
     })
 
-    this.linkSessionCloseSubscription = this.playerSessionService.sessionRenew$.subscribe(() => {
-      this.disconnect();
+    this.linkSessionCloseSubscription = this.playerSessionService.sessionClose$.subscribe(() => {
+      this.toast.show("Session has ended");
+      this.socket.disconnect();
+      this.linkSession?.destroy();
+      this.advanceLinkState(StepsState.JoiningSession);
     });
   }
 
   ngOnInit() {
     if (this.linkDeviceService.isConnected()) {
       this.advanceLinkState(StepsState.JoiningSession);
-      this.socket.connect();
     }
   }
 
@@ -84,6 +85,7 @@ export class OnlineLinkComponent {
     this.partnerSubscription.unsubscribe();
     this.linkSessionCloseSubscription.unsubscribe();
     this.disconnectSubscription.unsubscribe();
+    this.socket.disconnect();
     this.linkSession?.destroy();
   }
 
@@ -97,7 +99,6 @@ export class OnlineLinkComponent {
       .then(isConnected => {
         if (isConnected) {
           this.advanceLinkState(StepsState.JoiningSession);
-          this.socket.connect();
         }
       }
     )
@@ -106,46 +107,46 @@ export class OnlineLinkComponent {
   start() {
     LinkDeviceUtils.tryEnableLinkMode(this.linkDeviceService)
       .then(() => {
-        this.stepState = StepsState.Ready;
+        this.advanceLinkState(StepsState.Ready);
       })
       .catch(error => {
         this.toast.show(error, 'error', 4000)
         console.error(error);
-        this.disconnect();
+        this.disconnectCelioDevice();
       })
   }
 
-  disconnect(): void {
+  disconnectCelioDevice(): void {
     this.linkDeviceService.sendCommand(CommandType.Cancel);
-    this.stepState = StepsState.JoiningSession;
-    this.playerSessionService.leaveSession();
-    this.renewLinkSession();
-    this.cd.detectChanges();
+    this.leaveSession();
   }
 
-  createSession() {
-    this.playerSessionService.createSession().then(session => {
-      this.sessionId = session.id;
+  async enterSession(userSessionId?: string) {
+    if (!await this.socket.connect()) {
+      this.toast.show("Could not connect to Server", 'error', 4000)
+      console.error("Could not connect to Server");
+    }
+    this.playerSessionService.enterSession(userSessionId).then(session => {
       this.renewLinkSession();
-      this.advanceLinkState(StepsState.WaitingForPartner);
-    });
-  }
-
-  joinSession(sessionId: string) {
-    this.playerSessionService.joinSession(sessionId).then(session => {
-      this.renewLinkSession();
-      this.advanceLinkState(StepsState.SettingLinkMode);
+      if (userSessionId) {
+        this.advanceLinkState(StepsState.SettingLinkMode);
+      } else {
+        this.advanceLinkState(StepsState.WaitingForPartner);
+      }
       this.sessionId = session.id;
     }).catch(error => {
       this.toast.show(error, 'error', 4000)
       console.error(error);
+      this.socket.disconnect();
+      this.advanceLinkState(StepsState.JoiningSession);
     })
   }
 
   leaveSession() {
     this.playerSessionService.leaveSession();
+    this.socket.disconnect();
+    this.linkSession?.destroy();
     this.advanceLinkState(StepsState.JoiningSession);
-    this.renewLinkSession();
   }
 
   renewLinkSession() {
