@@ -69,11 +69,15 @@ export class CommandEmitterWebsocket extends CommandEmitterAbstract {
 
   receiveData(data: DataPacket) : void {
     const typedArray = new Uint16Array(data.data);
-    this.socket?.send(typedArray)
+    if (this.socket?.readyState == this.socket?.OPEN) {
+      this.socket?.send(typedArray)
+    }
   }
 
   receiveStatus(status: StatusPacket) : void {
-    this.socket?.send(status.linkStatus.toString())
+    if (this.socket?.readyState == this.socket?.OPEN) {
+      this.socket?.send(status.linkStatus.toString())
+    }
   }
 
   destroy() {
