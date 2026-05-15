@@ -64,6 +64,9 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
     this.statusSubscription = this.linkDeviceService.statusEvents$.subscribe(statusEvents => {
       console.log("Status: " + LinkStatus[statusEvents]);
       if (statusEvents === LinkStatus.LinkClosed) {
+
+        //FIXME When socket is closed by server, this and closed$ is called. Clean up closing states
+        if (this.stepState == StepsState.WaitForLocalServer) return;
         this.linkSession?.destroy();
         this.linkSession = undefined;
         this.startWaitForServer(1500);
@@ -115,13 +118,12 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
 
   startWaitForServer(delay: number = 1000) {
     this.emulatorSelection.setSetupComplete(true)
-    if (this.stepState == StepsState.WaitForLocalServer) return;
-
+    console.log("Start Wait for Server");
     this.advanceLinkState(StepsState.WaitForLocalServer)
-    let websocketBridge: CommandEmitterWebsocket = new CommandEmitterWebsocket();
+    let commandEmitterWebsocket: CommandEmitterWebsocket = new CommandEmitterWebsocket();
     if (this.linkSession != undefined) { this.linkSession?.destroy(); }
-    this.linkSession = new LinkExchangeSession(websocketBridge, new StatusEmitterLinkDevice(this.linkDeviceService));
-    websocketBridge.close$()
+    this.linkSession = new LinkExchangeSession(commandEmitterWebsocket, new StatusEmitterLinkDevice(this.linkDeviceService));
+    commandEmitterWebsocket.close$()
       .pipe(take(1))
       .subscribe(() => {
         if (this.linkDeviceService.isConnected()) {
@@ -130,7 +132,7 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
         }
       });
     this.timeoutId = setTimeout(() => {
-      websocketBridge.open().then(() => {
+      commandEmitterWebsocket.open().then(() => {
         this.timeoutId = undefined;
         this.advanceLinkState(StepsState.SettingLinkMode);
       })

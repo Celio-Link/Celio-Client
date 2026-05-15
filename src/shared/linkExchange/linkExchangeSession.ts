@@ -118,7 +118,7 @@ export class LinkExchangeSession {
   }
 
   destroy() {
-    console.log("LinkSession: Unsubscribing from events...");
+    console.log("Destroying LinkSession...");
     this.subscriptions.unsubscribe();
     this.commandEmitter.destroy();
     LinkDeviceUtils.sendCancel(this.statusEmitter)
