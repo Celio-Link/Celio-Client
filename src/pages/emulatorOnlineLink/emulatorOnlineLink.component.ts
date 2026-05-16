@@ -38,7 +38,6 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
   protected StepsState = StepsState;
   protected readonly SupportedEmulators = SupportedEmulators;
 
-  protected webUsbError: boolean = false;
   protected closing: boolean = false;
   protected timeoutId: number | undefined; //this is trash, pls fix
 

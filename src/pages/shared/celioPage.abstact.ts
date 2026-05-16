@@ -5,6 +5,7 @@ import {environment} from '../../environments/environment';
 export class CelioPageAbstract<StateEnumT> {
 
   protected stepState: StateEnumT;
+  protected webUsbError: boolean = false;
 
   constructor(private cd: ChangeDetectorRef) {
     // @ts-ignore
@@ -20,7 +21,7 @@ export class CelioPageAbstract<StateEnumT> {
   }
 
   protected isCurrentlyIn(step: StateEnumT): boolean {
-    //if (this.webUsbError) return false;
+    if (this.webUsbError) return false;
     return this.stepState == step
   }
 

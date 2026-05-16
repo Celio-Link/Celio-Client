@@ -30,7 +30,6 @@ export class TradeEmuComponent extends CelioPageAbstract<StepsState>{
   protected StepsState = StepsState;
 
   protected pkmFiles: PkmnFile[] = [];
-  protected webUsbError: boolean = false;
 
   private disconnectSubscription: Subscription;
   private statusSubscription: Subscription

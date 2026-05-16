@@ -48,7 +48,6 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
   private disconnectSubscription: Subscription;
 
   private linkSession: LinkExchangeSession | undefined = undefined;
-  protected webUsbError: boolean = false;
 
   constructor(cd: ChangeDetectorRef, private playerSessionService: PlayerSessionService, private socket: WebSocketService) {
     super(cd);
