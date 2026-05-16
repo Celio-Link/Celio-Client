@@ -1,75 +1,83 @@
-<div class="flex h-[93vh] bg-[#8890f8] justify-start">
-  <ul class="menu flex-col h-[22em] w-[20em]">
+<div class="h-screen w-67 bg-[#8890f8] flex flex-col">
+  <div class="flex-1">
+    <ul class="menu flex-col h-[22em] w-[19em]">
+      <li class="flex-1">
+        <a routerLink="/onlineLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+          Online Link
+        </a>
+        <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
+          <div class="tooltip before:text-2xl tooltip-bottom font-Gen3" data-tip="Link online using a physical Gameboy Advance">
+            <svg class="size-[1.4em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <g fill="currentColor" stroke-linejoin="miter" stroke-linecap="butt">
+                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></circle>
+                <path d="m12,17v-5.5c0-.276-.224-.5-.5-.5h-1.5" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></path>
+                <circle cx="12" cy="7.25" r="1.25" fill="currentColor" stroke-width="2"></circle>
+              </g>
+            </svg>
+          </div>
+        </span>
+      </li>
+      <li class="flex-1">
+        <a routerLink="/emulatorOnlineLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+          Online Emulator Link
+        </a>
+        <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
+          <div class="tooltip before:text-2xl tooltip-bottom font-Gen3" data-tip="Link online using an Emulator">
+            <svg class="size-[1.4em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <g fill="currentColor" stroke-linejoin="miter" stroke-linecap="butt">
+                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></circle>
+                <path d="m12,17v-5.5c0-.276-.224-.5-.5-.5h-1.5" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></path>
+                <circle cx="12" cy="7.25" r="1.25" fill="currentColor" stroke-width="2"></circle>
+              </g>
+            </svg>
+          </div>
+        </span>
+      </li>
+      <li class="flex-1">
+        <a routerLink="/emulatorLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+          Local Emulator Link
+        </a>
+        <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
+          <div class="tooltip before:text-2xl tooltip-bottom font-Gen3" data-tip="Link a physical Gameboy Advance locally to an Emulator">
+            <svg class="size-[1.4em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <g fill="currentColor" stroke-linejoin="miter" stroke-linecap="butt">
+                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></circle>
+                <path d="m12,17v-5.5c0-.276-.224-.5-.5-.5h-1.5" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></path>
+                <circle cx="12" cy="7.25" r="1.25" fill="currentColor" stroke-width="2"></circle>
+              </g>
+            </svg>
+          </div>
+        </span>
+      </li>
+      <li class="flex-1">
+        <a routerLink="/tradeEmu" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+          Trade Emulation
+        </a>
+        <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
+          <div class="tooltip before:text-2xl tooltip-bottom font-Gen3" data-tip="Simulate a trade with a physical Gameboy Advance. Supports .ek3 and .pk3 files">
+            <svg class="size-[1.4em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+              <g fill="currentColor" stroke-linejoin="miter" stroke-linecap="butt">
+                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></circle>
+                <path d="m12,17v-5.5c0-.276-.224-.5-.5-.5h-1.5" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></path>
+                <circle cx="12" cy="7.25" r="1.25" fill="currentColor" stroke-width="2"></circle>
+              </g>
+            </svg>
+          </div>
+        </span>
+      </li>
+    </ul>
+  </div>
+  <ul class="menu flex-col h-[11.5em] w-[19em]">
     <li class="flex-1">
-      <a routerLink="/onlineLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
-        Online Link
+      <a href="https://gblink.io/" target="_blank" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+        Get Hardware
       </a>
-      <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
-        <div class="tooltip before:text-2xl tooltip-bottom font-Gen3" data-tip="Link online using a physical Gameboy Advance">
-          <svg class="size-[1.4em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <g fill="currentColor" stroke-linejoin="miter" stroke-linecap="butt">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></circle>
-              <path d="m12,17v-5.5c0-.276-.224-.5-.5-.5h-1.5" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></path>
-              <circle cx="12" cy="7.25" r="1.25" fill="currentColor" stroke-width="2"></circle>
-            </g>
-          </svg>
-        </div>
-      </span>
     </li>
     <li class="flex-1">
-      <a routerLink="/emulatorOnlineLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
-        Online Emulator Link
-      </a>
-      <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
-        <div class="tooltip before:text-2xl tooltip-bottom font-Gen3" data-tip="Link online using an Emulator">
-          <svg class="size-[1.4em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <g fill="currentColor" stroke-linejoin="miter" stroke-linecap="butt">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></circle>
-              <path d="m12,17v-5.5c0-.276-.224-.5-.5-.5h-1.5" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></path>
-              <circle cx="12" cy="7.25" r="1.25" fill="currentColor" stroke-width="2"></circle>
-            </g>
-          </svg>
-        </div>
-      </span>
-    </li>
-    <li class="flex-1">
-      <a routerLink="/emulatorLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
-        Local Emulator Link
-      </a>
-      <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
-        <div class="tooltip before:text-2xl tooltip-bottom font-Gen3" data-tip="Link a physical Gameboy Advance locally to an Emulator">
-          <svg class="size-[1.4em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <g fill="currentColor" stroke-linejoin="miter" stroke-linecap="butt">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></circle>
-              <path d="m12,17v-5.5c0-.276-.224-.5-.5-.5h-1.5" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></path>
-              <circle cx="12" cy="7.25" r="1.25" fill="currentColor" stroke-width="2"></circle>
-            </g>
-          </svg>
-        </div>
-      </span>
-    </li>
-    <li class="flex-1">
-      <a routerLink="/tradeEmu" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
-        Trade Emulation
-      </a>
-      <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
-        <div class="tooltip before:text-2xl tooltip-bottom font-Gen3" data-tip="Simulate a trade with a physical Gameboy Advance. Supports .ek3 and .pk3 files">
-          <svg class="size-[1.4em]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-            <g fill="currentColor" stroke-linejoin="miter" stroke-linecap="butt">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></circle>
-              <path d="m12,17v-5.5c0-.276-.224-.5-.5-.5h-1.5" fill="none" stroke="currentColor" stroke-linecap="square" stroke-miterlimit="10" stroke-width="2"></path>
-              <circle cx="12" cy="7.25" r="1.25" fill="currentColor" stroke-width="2"></circle>
-            </g>
-          </svg>
-        </div>
-      </span>
-    </li>
-  </ul>
-</div>
-<div class="flex h-[7vh] bg-[#8890f8] justify-start">
-  <div class="flex-1 menu flex-col h-[6em] w-[20em]">
-      <a href="https://github.com/Celio-Link/Celio-Client" target="_blank" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+      <a href="https://github.com/Celio-Link/Celio-Client" target="_blank" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
         View on Github
       </a>
-  </div>
+    </li>
+  </ul>
+
 </div>
