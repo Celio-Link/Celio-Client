@@ -2,12 +2,14 @@ import {expect, test} from 'vitest';
 import {CommandType, DataArray, LinkDeviceServiceMock} from './mocks/service/linkdevice.service.mock';
 import {WebSocketService} from '../src/services/websocket.service';
 import {PlayerSessionService} from '../src/services/playersession.service';
-import { LinkdeviceExchangeSession, StatusPacket } from '../src/pages/onlineLink/linkdeviceExchangeSession';
+import { LinkExchangeSession } from '../src/shared/linkExchange/linkExchangeSession';
 import {LinkStatus} from '../src/services/linkdevice.service';
 import {v4 as uuidv4} from 'uuid';
 import {CelioDeviceMock} from './mocks/celioDeviceMock';
+import {CommandEmitterSocketIO} from '../src/shared/linkExchange/commandEmitter/commandEmitter.socketIO';
+import {StatusPacket} from '../src/shared/linkExchange/commandEmitter/commandEmitter.abstract';
 
-export class LinkDeviceExchangeMockStatusDuplication extends LinkdeviceExchangeSession {
+export class LinkDeviceExchangeMockStatusDuplication extends LinkExchangeSession {
   override handleDeviceStatusToSocket(status: LinkStatus) {
     console.log("Celio device has emitted a LinkStatus event: " + LinkStatus[status]);
     switch (status) {
@@ -19,8 +21,8 @@ export class LinkDeviceExchangeMockStatusDuplication extends LinkdeviceExchangeS
     }
 
     const statusPacket: StatusPacket = {uuid: uuidv4(), linkStatus: status};
-    this.websocketService.emit('deviceStatus', statusPacket);
-    this.websocketService.emit('deviceStatus', statusPacket);
+    this.commandEmitter.receiveStatus(statusPacket);
+    this.commandEmitter.receiveStatus(statusPacket);
   }
 }
 
@@ -49,7 +51,7 @@ test("Exchange Data with repeated command packets", () => new Promise<void>(asyn
   }
 
   // Mock sends out packets twice instead of once
-  const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockStatusDuplication(websocketServiceA, linkDeviceServiceMockA as any);
+  const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockStatusDuplication(new CommandEmitterSocketIO(websocketServiceA), linkDeviceServiceMockA as any);
   websocketServiceA.connect();
   let sessionInfo = await playerSessionServiceA.createSession()
   expect(sessionInfo.full).toEqual(false);
@@ -63,7 +65,7 @@ test("Exchange Data with repeated command packets", () => new Promise<void>(asyn
     expect(celioDeviceB.commands.slice(1)).toEqual([CommandType.StartHandshake, CommandType.ConnectLink])
   }
 
-  const linkDeviceExchangeServiceB = new LinkdeviceExchangeSession(websocketServiceB, linkDeviceServiceMockB as any);
+  const linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), linkDeviceServiceMockB as any);
   websocketServiceB.connect();
   sessionInfo = await playerSessionServiceB.joinSession(sessionInfo.id)
   expect(sessionInfo.full).toEqual(true);

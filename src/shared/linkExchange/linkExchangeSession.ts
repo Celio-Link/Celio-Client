@@ -1,43 +1,12 @@
 import {Subscription} from 'rxjs';
-import {WebSocketService} from '../../services/websocket.service';
-import {CommandType, DataArray, LinkDeviceService, LinkStatus} from '../../services/linkdevice.service';
+import {CommandEmitterAbstract} from './commandEmitter/commandEmitter.abstract';
 import {v4 as uuidv4} from 'uuid';
+import {CommandPacket, CommandType, DataArray, DataPacket, LinkStatus, StatusPacket} from './common';
+import {StatusEmitterAbstract} from './statusEmitter/statusEmitter.abstract';
+import {LinkDeviceUtils} from '../linkDeviceUtils';
 
-export class DataPacket {
-  public sequence: number;
-  public data: DataArray;
 
-  constructor(sequence: number, data: DataArray) {
-    this.sequence = sequence;
-    this.data = data;
-  }
-
-  private dataToString(): string {
-    let out = "";
-    for (let i = 0; i < this.data.length; i++) {
-      if (i) out += " ";
-      if (i % 8 == 0) out += "\n";
-      out += "0x" + (this.data[i] & 0xffff).toString(16).padStart(4, "0").toUpperCase();
-    }
-    return out;
-  }
-
-  toString(): string {
-    return "Sequence = " + this.sequence + this.dataToString();
-  }
-}
-
-interface CommandPacket {
-  uuid: string;
-  command: CommandType;
-}
-
-export interface StatusPacket {
-  uuid: string;
-  linkStatus: LinkStatus;
-}
-
-export class LinkdeviceExchangeSession {
+export class LinkExchangeSession {
 
   private subscriptions = new Subscription();
 
@@ -49,33 +18,33 @@ export class LinkdeviceExchangeSession {
   private expectedPacketSequence = 0;
   protected transmittedPacketCounter = 0;
 
-  constructor(protected websocketService: WebSocketService, protected linkDeviceService: LinkDeviceService) {
-    this.subscriptions.add(linkDeviceService.statusEvents$.subscribe(status => {
+  constructor(protected commandEmitter: CommandEmitterAbstract, protected statusEmitter: StatusEmitterAbstract) {
+    this.subscriptions.add(statusEmitter.status$().subscribe(status => {
       this.handleDeviceStatusToSocket(status);
     }))
 
-    this.subscriptions.add(linkDeviceService.dataEvents$.subscribe(data => {
+    this.subscriptions.add(statusEmitter.data$().subscribe(data => {
       this.handleDeviceDataToSocket(data);
     }))
 
-    this.subscriptions.add(this.websocketService.fromEventWithAck<DataPacket>('deviceData').subscribe(({data, ack}) => {
+    this.subscriptions.add(this.commandEmitter.data$().subscribe((data: DataPacket) => {
       this.handleSocketDataToDevice(new DataPacket(data.sequence, data.data));
-      ack(true); //FIXME better ack handling
     }))
 
-    this.subscriptions.add(this.websocketService.fromEvent<CommandPacket>('deviceCommand').subscribe((commandPacket: CommandPacket) => {
+    this.subscriptions.add(this.commandEmitter.command$().subscribe((commandPacket: CommandPacket) => {
       this.handleSocketCommandToDevice(commandPacket)
     }))
 
-    this.subscriptions.add(this.websocketService.fromEvent<void>('sessionClose').subscribe(() => {
+    this.subscriptions.add(this.commandEmitter.close$().subscribe(() => {
       console.log("LinkSession: Unsubscribing from events...");
       this.subscriptions.unsubscribe();
     }))
+    console.log("LinkSession: Subscribing to events...");
   }
 
   handleDeviceDataToSocket(data: DataArray) {
     let packet: DataPacket = new DataPacket(this.transmittedPacketCounter, data);
-    this.websocketService.emit('deviceData', packet);
+    this.commandEmitter.receiveData(packet);
     this.transmittedPacketCounter++;
     console.log("%c Outgoing: " + packet.toString(), 'color: #3366ff');
   }
@@ -98,7 +67,7 @@ export class LinkdeviceExchangeSession {
       console.warn("Queue status: " + JSON.stringify(this.deviceQueue));
     }
     if (queued) {
-      this.linkDeviceService.sendData(queued).then(
+      this.statusEmitter.receiveData(queued).then(
         null,
         () => {
           console.log("Transmit data to device: ERROR, Unshift data to queue...");
@@ -134,7 +103,7 @@ export class LinkdeviceExchangeSession {
     }
 
     const statusPacket: StatusPacket = { uuid: uuidv4(), linkStatus: status };
-    this.websocketService.emit('deviceStatus', statusPacket);
+    this.commandEmitter.receiveStatus(statusPacket);
   }
 
   handleSocketCommandToDevice(commandPacket: CommandPacket) {
@@ -142,13 +111,17 @@ export class LinkdeviceExchangeSession {
     if (this.commandSet.has(commandPacket.uuid)) return;
     this.commandSet.add(commandPacket.uuid);
 
-    this.linkDeviceService.sendCommand(commandPacket.command).then(
+    this.statusEmitter.receiveCommand(commandPacket.command, new Uint8Array(0)).then(
       () => console.log("Command '"  + CommandType[commandPacket.command] + "' has been send to Celio device"),
       () => console.log("Command send to Celio device failed with: ERROR")
     )
   }
 
   destroy() {
+    console.log("Destroying LinkSession...");
     this.subscriptions.unsubscribe();
+    this.commandEmitter.destroy();
+    LinkDeviceUtils.sendCancel(this.statusEmitter)
+    this.statusEmitter.destroy();
   }
 }

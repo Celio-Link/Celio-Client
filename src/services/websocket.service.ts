@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
-import { fromEvent, Observable } from 'rxjs';
+import {firstValueFrom, fromEvent, map, mapTo, Observable, race, take} from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 import { environment } from '../environments/environment';
 
@@ -10,8 +10,6 @@ export class WebSocketService {
   protected socket: Socket = io(environment.apiUrl, {
     transports: ["websocket"],
     autoConnect: false,
-    // retries: 10,
-    // ackTimeout: 5000,
     reconnectionAttempts: 4,
     reconnectionDelay: 100,
     reconnectionDelayMax: 1000,
@@ -24,8 +22,9 @@ export class WebSocketService {
     this.socket.auth = { clientId: this.clientId }
   }
 
-  onDisconnect$ = fromEvent<void>(this.socket, 'disconnect');
-  onConnect$ = fromEvent<void>(this.socket, 'connect');
+  public onDisconnect$ = fromEvent<void>(this.socket, 'disconnect');
+  private onConnect$ = fromEvent<void>(this.socket, 'connect');
+  private onConnectError$ = fromEvent<Error>(this.socket, 'connect_error');
 
   /**
    * Create an observable from a socket.io event.
@@ -56,12 +55,26 @@ export class WebSocketService {
     this.socket.emit(event, ...args);
   }
 
-  connect() {
-    if (!this.socket.connected) {
-      this.socket.connect();
-    }
+   async connect() {
+     if (this.socket.connected) { return true; }
+
+     const success$ = this.onConnect$.pipe(
+       take(1),
+       map(() => true)
+     );
+
+     const error$ = this.onConnectError$.pipe(
+       take(1),
+       map(() => false)
+     );
+
+     this.socket.connect();
+     return firstValueFrom(race(success$, error$));
   }
 
+  /**
+   * Disconnect from the server. Diconnecting a not-connected socket will do nothing.
+   */
   disconnect() {
     if (this.socket.connected) {
       this.socket.disconnect();

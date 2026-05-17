@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 import { LayoutComponent } from '../layout/layout.component';
 import { OnlineLinkComponent } from '../pages/onlineLink/onlineLink.component';
 import { TradeEmuComponent } from '../pages/tradeEmu/tradeEmu.component';
+import { EmulatorLinkComponent } from '../pages/emulatorLink/emulatorLink.component';
+import {EmulatorOnlineLinkComponent} from '../pages/emulatorOnlineLink/emulatorOnlineLink.component';
 
 export const routes: Routes = [
   {
@@ -10,7 +12,9 @@ export const routes: Routes = [
     children: [
       { path: '', redirectTo: 'onlineLink', pathMatch: 'full' },
       { path: 'onlineLink', component: OnlineLinkComponent },
-      { path: 'tradeEmu', component: TradeEmuComponent }
+      { path: 'tradeEmu', component: TradeEmuComponent },
+      { path: 'emulatorLink', component: EmulatorLinkComponent },
+      { path: 'emulatorOnlineLink', component: EmulatorOnlineLinkComponent }
     ]
   }
 ];

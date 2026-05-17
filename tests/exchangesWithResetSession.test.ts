@@ -1,10 +1,11 @@
 import { test, expect } from "vitest";
 import { PlayerSessionService } from "../src/services/playersession.service.js";
 import { WebSocketService } from "../src/services/websocket.service.js";
-import { LinkdeviceExchangeSession } from '../src/pages/onlineLink/linkdeviceExchangeSession';
+import { LinkExchangeSession } from '../src/shared/linkExchange/linkExchangeSession';
 import { LinkDeviceServiceMock, DataArray } from "./mocks/service/linkdevice.service.mock";
 import { CelioDeviceMock } from './mocks/celioDeviceMock';
 import {combineLatest} from 'rxjs';
+import {CommandEmitterSocketIO} from '../src/shared/linkExchange/commandEmitter/commandEmitter.socketIO';
 
 test("Exchange Data in two sessions", {timeout: 20000}, () => new Promise<void>(async done => {
 
@@ -19,7 +20,7 @@ test("Exchange Data in two sessions", {timeout: 20000}, () => new Promise<void>(
   const websocketServiceA = new WebSocketService();
   const playerSessionServiceA = new PlayerSessionService(websocketServiceA);
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB);
-  let linkDeviceExchangeServiceA = new LinkdeviceExchangeSession(websocketServiceA, linkDeviceServiceMockA as any)
+  let linkDeviceExchangeServiceA = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceA), linkDeviceServiceMockA as any)
 
   websocketServiceA.connect();
   let sessionInfo = await playerSessionServiceA.createSession()
@@ -28,11 +29,11 @@ test("Exchange Data in two sessions", {timeout: 20000}, () => new Promise<void>(
   const websocketServiceB = new WebSocketService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
   const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA);
-  let linkDeviceExchangeServiceB = new LinkdeviceExchangeSession(websocketServiceB, linkDeviceServiceMockB as any)
+  let linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), linkDeviceServiceMockB as any)
 
   combineLatest(playerSessionServiceA.sessionRenew$, playerSessionServiceB.sessionRenew$).subscribe(() => {
-    linkDeviceExchangeServiceA = new LinkdeviceExchangeSession(websocketServiceA, linkDeviceServiceMockA as any)
-    linkDeviceExchangeServiceB = new LinkdeviceExchangeSession(websocketServiceB, linkDeviceServiceMockB as any)
+    linkDeviceExchangeServiceA = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceA), linkDeviceServiceMockA as any)
+    linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), linkDeviceServiceMockB as any)
     celioDeviceB.restart();
     celioDeviceA.restart();
   })

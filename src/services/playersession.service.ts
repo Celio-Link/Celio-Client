@@ -5,7 +5,7 @@ import {Result} from 'true-myth';
 import { WebSocketService } from './websocket.service';
 
 export enum ErrorType {
-  NotFound = "No session found",
+  NotFound = "Session not found",
   AlreadyExists = "Already Exists"
 }
 
@@ -23,11 +23,12 @@ export class PlayerSessionService {
     throw new Error("Not a valid Result");
   }
 
+  private inSession: boolean = false;
   private partnerEventSubject =  new Subject<boolean>();
   public partnerEvents$ = this.partnerEventSubject.asObservable();
 
-  private sessionSubject =  new Subject<void>();
-  public sessionRenew$ = this.sessionSubject.asObservable();
+  private sessionCloseSubject =  new Subject<void>();
+  public sessionClose$ = this.sessionCloseSubject.asObservable();
 
   private socketEventHandlers: Record<string, (data?: any) => void> = {
 
@@ -40,7 +41,8 @@ export class PlayerSessionService {
     },
 
     sessionClose: () => {
-      this.sessionSubject.next();
+      this.inSession = false;
+      this.sessionCloseSubject.next();
     }
   }
 
@@ -51,17 +53,28 @@ export class PlayerSessionService {
       const sub = this.websocketService.fromEvent(event).subscribe(value => handler(value));
       this.subscriptions.add(sub);
     });
+
+    websocketService.onDisconnect$.subscribe(() => {this.inSession = false;})
   }
 
   ngOnDestroy() {
     this.subscriptions.unsubscribe();
   }
 
-  createSession(): Promise<SessionState> {
+  enterSession(sessionId?: string): Promise<SessionState> {
+    let eventString = "sessionCreate";
+    let eventArgs: string | undefined = undefined;
+
+    if (sessionId) {
+      eventString = "sessionJoin";
+      eventArgs = sessionId;
+    }
+
     return new Promise((resolve, reject) => {
-      this.websocketService.emit("sessionCreate", (raw: any) => {
+      this.websocketService.emit(eventString, eventArgs, (raw: any) => {
           const result: Result<SessionState, ErrorType> = this.reviveResult(raw)
           if (result.isOk) {
+            this.inSession = true;
             resolve(result.value);
           } else {
             reject(result.error);
@@ -70,20 +83,13 @@ export class PlayerSessionService {
     });
   }
 
-  joinSession(sessionId: string): Promise<SessionState> {
-    return new Promise((resolve, reject) => {
-      this.websocketService.emit("sessionJoin", sessionId, (raw: any) => {
-          const result: Result<SessionState, ErrorType> = this.reviveResult(raw)
-          if (result.isOk) {
-            resolve(result.value);
-          } else {
-            reject(result.error);
-          }
-        });
-    });
-  }
-
+  /**
+   * Leave the current session. Leaving without being in a session will do nothing.
+   */
   leaveSession() {
-    this.websocketService.emit("sessionLeft");
+    if (this.inSession) {
+      this.inSession = false;
+      this.websocketService.emit("sessionLeft");
+    }
   }
 }
