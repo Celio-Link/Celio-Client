@@ -62,7 +62,9 @@
       <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex w-full h-[5rem]">
         <div class="font-Gen3 text-4xl">
           Load via Tools → Scripting... → File → Load script...<br>
-          <button (click)="emulatorSelected(SupportedEmulators.mGBA)" class="btn btn-sm text-2xl absolute bottom-3 left-2">Download plugin</button>
+          <button onclick="window.open('https://github.com/Exormeter/mgba/releases/tag/1.0.0', '_blank')" class="btn btn-sm text-2xl absolute bottom-3 left-2">
+            Download script
+          </button>
           <button *ngIf=isCurrentlyIn(StepsState.DownloadPlugin) (click)="startWaitForServer()" class="btn btn-sm text-2xl absolute bottom-3 right-10">Next Step</button>
         </div>
       </div>
