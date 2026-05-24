@@ -64,13 +64,13 @@ export class TradeEmuComponent extends CelioPageAbstract<StepsState>{
     this.statusSubscription.unsubscribe();
   }
 
-  connect(): void {
-    if (navigator.usb == undefined) {
+  connect(kind: 'usb' | 'serial' = 'usb'): void {
+    if (kind === 'usb' ? navigator.usb == undefined : navigator.serial == undefined) {
       this.webUsbError = true;
       return;
     }
 
-    this.linkDeviceService.connectDevice()
+    this.linkDeviceService.connectDevice(kind)
       .then(isConnected => {
           this.linkDeviceConnected = isConnected
           if (isConnected) {

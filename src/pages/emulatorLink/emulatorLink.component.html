@@ -13,16 +13,17 @@
 
   <div class="box relative">
     <div class="flex w-full h-[5rem]">
-      <div *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" class="card rounded-box grid grow place-items-center">
-        <button (click)="connect()" class="btn btn-lg">Connect Celio Device</button>
+      <div *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" class="card rounded-box grid grow place-items-center gap-2">
+        <button (click)="connect('usb')" class="btn btn-lg">Connect Celio Device (USB)</button>
+        <button (click)="connect('serial')" class="btn btn-lg">Connect Celio Device (Serial)</button>
       </div>
       <div *ngIf="hasReached(StepsState.ChooseEmulator)" class="font-Gen3 text-4xl">
-        Celio USB connection status: <br>
+        Celio connection status: <br>
         Ready!
       </div>
       <div *ngIf="webUsbError" class="font-Gen3 text-4xl">
-        Web USB is not supported by this browser.<br>
-        Please use Chrome or another Chromium based browser.
+        Neither WebUSB nor WebSerial is supported by this browser.<br>
+        Use Chrome/Edge (WebUSB or WebSerial) or Firefox 151+ (WebSerial).
       </div>
     </div>
     <img *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
