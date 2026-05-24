@@ -5,7 +5,14 @@ import {environment} from '../../environments/environment';
 export class CelioPageAbstract<StateEnumT> {
 
   protected stepState: StateEnumT;
-  protected webUsbError: boolean = false;
+  protected readonly usbSupported: boolean =
+    typeof navigator !== 'undefined' && navigator.usb !== undefined;
+  protected readonly serialSupported: boolean =
+    typeof navigator !== 'undefined' && navigator.serial !== undefined;
+
+  protected get webUsbError(): boolean {
+    return !this.usbSupported && !this.serialSupported;
+  }
 
   constructor(private cd: ChangeDetectorRef) {
     // @ts-ignore

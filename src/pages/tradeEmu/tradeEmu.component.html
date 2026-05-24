@@ -10,9 +10,11 @@
 
   <div class="box relative">
     <div class="flex w-full h-[5rem]">
-      <div *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" class="card rounded-box grid grow place-items-center gap-2">
-        <button (click)="connect('usb')" class="btn btn-lg">Connect Celio Device (USB)</button>
-        <button (click)="connect('serial')" class="btn btn-lg">Connect Celio Device (Serial)</button>
+      <div *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" class="card rounded-box grid grow place-items-center">
+        <div class="flex gap-2">
+          <button (click)="connect('usb')" [disabled]="!usbSupported" class="btn">Connect USB</button>
+          <button (click)="connect('serial')" [disabled]="!serialSupported" class="btn">Connect Serial</button>
+        </div>
       </div>
       <div *ngIf="hasReached(StepsState.SelectingPokemon)" class="font-Gen3 text-4xl">
         Celio connection status: <br>
