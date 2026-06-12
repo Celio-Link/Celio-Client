@@ -14,9 +14,12 @@ export class LinkDeviceUtils {
     });
   }
 
-  private static enableLinkMode(statusEmitter: StatusEmitterAbstract):Promise<void> {
-    let args: Uint8Array = new Uint8Array(1);
-    args[0] = Mode.onlineLink;
+  private static enableLinkMode(statusEmitter: StatusEmitterAbstract, mode: Mode = Mode.onlineLink, variant?: number):Promise<void> {
+    let args: Uint8Array = new Uint8Array(variant === undefined ? 1 : 2);
+    args[0] = mode;
+    if (variant !== undefined) {
+      args[1] = variant;
+    }
     return new Promise<void>((resolve, reject) => {
       statusEmitter.receiveCommand(CommandType.SetMode, args).then(ok => {
         if (!ok) {
@@ -49,13 +52,13 @@ export class LinkDeviceUtils {
     });
   }
 
-  static async tryEnableLinkMode(statusEmitter: StatusEmitterAbstract) {
+  static async tryEnableLinkMode(statusEmitter: StatusEmitterAbstract, mode: Mode = Mode.onlineLink, variant?: number) {
     const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
     const waitForReady = this.createReadyPromise(statusEmitter);
 
     await this.sendCancel(statusEmitter);
     await delay(500);
-    await this.enableLinkMode(statusEmitter);
+    await this.enableLinkMode(statusEmitter, mode, variant);
     await waitForReady;
   }
 }

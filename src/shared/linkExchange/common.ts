@@ -35,7 +35,8 @@ export enum CommandType {
 
 export enum Mode {
   tradeEmu = 0x00,
-  onlineLink = 0x01
+  onlineLink = 0x01,
+  advanceWars = 0x04
 }
 
 export interface CommandPacket {

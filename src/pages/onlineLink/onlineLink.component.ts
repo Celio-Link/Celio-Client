@@ -1,7 +1,8 @@
 import {ChangeDetectorRef, Component, inject, ViewChild} from '@angular/core';
 import { NgClass, NgIf } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 
-import {CommandType} from '../../shared/linkExchange/common';
+import {CommandType, Mode} from '../../shared/linkExchange/common';
 
 import {Subscription, take} from 'rxjs';
 import {PlayerSessionService} from '../../services/playersession.service';
@@ -38,6 +39,12 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
   @ViewChild(ToastComponent) toast!: ToastComponent;
 
   private linkDeviceService = inject(LinkDeviceService)
+  private route = inject(ActivatedRoute)
+
+  // Per-route (app.routes.ts): which firmware mode this page drives and the matching ready-screen copy.
+  protected linkMode: Mode = this.route.snapshot.data['linkMode'] ?? Mode.onlineLink;
+  protected awVariant: number | undefined = this.route.snapshot.data['awVariant'];
+  protected readyInstruction: string = this.route.snapshot.data['readyInstruction'] ?? '';
 
   protected sessionId: string | undefined = "";
 
@@ -105,7 +112,7 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
   }
 
   start() {
-    LinkDeviceUtils.tryEnableLinkMode(new StatusEmitterLinkDevice(this.linkDeviceService))
+    LinkDeviceUtils.tryEnableLinkMode(new StatusEmitterLinkDevice(this.linkDeviceService), this.linkMode, this.awVariant)
       .then(() => {
         this.advanceLinkState(StepsState.Ready);
       })
