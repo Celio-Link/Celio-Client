@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
-import {CommandType, DataArray, LinkStatus} from '../shared/linkExchange/common';
+import {CommandType, DataArray, FirmwareVersion, LinkStatus} from '../shared/linkExchange/common';
 
 type Mode = 'usb' | 'serial';
 
@@ -43,6 +43,11 @@ export class LinkDeviceService {
 
   private dataEventSubject = new Subject<DataArray>();
   public dataEvents$ = this.dataEventSubject.asObservable();
+
+  // Data-channel payloads that aren't 64-byte link packets — command replies
+  // like GetFirmwareInfo (5 bytes: [0x0F, major, minor, patch, flags]).
+  private dataRawEventSubject = new Subject<Uint8Array>();
+  public dataRawEvents$ = this.dataRawEventSubject.asObservable();
 
   private disconnectEventSubject = new Subject<void>();
   public disconnectEvents$ = this.disconnectEventSubject.asObservable();
@@ -184,6 +189,8 @@ export class LinkDeviceService {
       const uint16Array = new Uint16Array(this.rxBuf.buffer, this.rxBuf.byteOffset, 32);
       const dataArray = Array.from(uint16Array) as DataArray;
       this.dataEventSubject.next(dataArray);
+    } else if (this.rxChannel === CH_DATA && this.rxBuf.byteLength > 0) {
+      this.dataRawEventSubject.next(this.rxBuf);
     } else if (this.rxChannel === CH_STATUS && this.rxBuf.byteLength === 2) {
       const status = new Uint16Array(this.rxBuf.buffer, this.rxBuf.byteOffset, 1);
       this.statusEventSubject.next(status[0] as LinkStatus);
@@ -215,6 +222,8 @@ export class LinkDeviceService {
         const uint16Array = new Uint16Array(result.data.buffer, result.data.byteOffset, 32);
         const dataArray = Array.from(uint16Array) as DataArray;
         this.dataEventSubject.next(dataArray);
+      } else if (result.data && result.data.byteLength > 0) {
+        this.dataRawEventSubject.next(new Uint8Array(result.data.buffer, result.data.byteOffset, result.data.byteLength));
       }
       if (this.mode === 'usb') this.readData()
     }, (err: Error) => {console.log(err)})
@@ -271,6 +280,32 @@ export class LinkDeviceService {
       console.error(error);
       return false;
     }
+  }
+
+  // Query the firmware version (GetFirmwareInfo, 0x0F). The reply arrives on
+  // the data channel, so subscribe before sending. Resolves undefined on
+  // timeout — firmware too old to answer, or no device.
+  getFirmwareVersion(timeoutMs: number = 1500): Promise<FirmwareVersion | undefined> {
+    return new Promise(resolve => {
+      const timer = setTimeout(() => {
+        subscription.unsubscribe();
+        resolve(undefined);
+      }, timeoutMs);
+      const subscription = this.dataRawEvents$.subscribe(bytes => {
+        if (bytes.length >= 4 && bytes[0] === CommandType.GetFirmwareInfo) {
+          clearTimeout(timer);
+          subscription.unsubscribe();
+          resolve({ major: bytes[1], minor: bytes[2], patch: bytes[3] });
+        }
+      });
+      this.sendCommand(CommandType.GetFirmwareInfo).then(sent => {
+        if (!sent) {
+          clearTimeout(timer);
+          subscription.unsubscribe();
+          resolve(undefined);
+        }
+      });
+    });
   }
 
   async disconnect() {
