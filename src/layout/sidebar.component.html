@@ -1,6 +1,6 @@
 <div class="h-screen w-67 bg-[#8890f8] flex flex-col">
   <div class="flex-1">
-    <ul class="menu flex-col h-[27em] w-[19em]">
+    <ul class="menu flex-col h-[33em] w-[19em]">
       <li class="flex-1">
         <a routerLink="/onlineLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
           Online Link
@@ -66,7 +66,7 @@
         </span>
       </li>
       <!-- Empty slot: keeps Advance Wars visually separated from the link modes above -->
-      <li class="flex-1"></li>
+      <li class="flex-1 bg-[#8890f8]"></li>
       <li class="flex-1">
         <a routerLink="/advanceWarsLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
           Advance Wars
@@ -85,6 +85,7 @@
       </li>
     </ul>
   </div>
+
   <ul class="menu flex-col w-[19em] {{ fromLauncher ? 'h-[17.25em]' : 'h-[11.5em]' }}">
     @if (fromLauncher) {
     <li class="flex-1">
