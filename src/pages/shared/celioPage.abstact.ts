@@ -5,7 +5,24 @@ import {environment} from '../../environments/environment';
 export class CelioPageAbstract<StateEnumT> {
 
   protected stepState: StateEnumT;
-  protected webUsbError: boolean = false;
+  protected readonly usbSupported: boolean =
+    typeof navigator !== 'undefined' && navigator.usb !== undefined;
+  protected readonly serialSupported: boolean =
+    typeof navigator !== 'undefined' && navigator.serial !== undefined;
+
+  protected get webUsbError(): boolean {
+    return !this.usbSupported && !this.serialSupported;
+  }
+
+  // Prefer WebUSB; fall back to WebSerial only when WebUSB is unavailable
+  // (e.g. Firefox 151+, or Chromium with WebUSB disabled).
+  protected get connectTransport(): 'usb' | 'serial' | null {
+    return this.usbSupported ? 'usb' : (this.serialSupported ? 'serial' : null);
+  }
+
+  protected get connectLabel(): string {
+    return this.connectTransport === 'serial' ? 'Connect Serial' : 'Connect USB';
+  }
 
   constructor(private cd: ChangeDetectorRef) {
     // @ts-ignore
