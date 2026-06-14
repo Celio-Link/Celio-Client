@@ -161,6 +161,11 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
     this.linkSession = new LinkExchangeSession(new CommandEmitterSocketIO(this.socket), this.statusEmitterWebsocket);
   }
 
+  copySessionId() {
+    navigator.clipboard.writeText(this.sessionId!);
+    this.toast.show("Session Id copied", 'info', 1800)
+  }
+
   disconnect(): void {
     this.statusEmitterWebsocket?.destroy();
   }

@@ -201,4 +201,9 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
     this.linkSession?.destroy();
     this.linkSession = new LinkExchangeSession(new CommandEmitterSocketIO(this.socket), new StatusEmitterLinkDevice(this.linkDeviceService));
   }
+
+  copySessionId() {
+    navigator.clipboard.writeText(this.sessionId!);
+    this.toast.show("Session Id copied", 'info', 1800)
+  }
 }

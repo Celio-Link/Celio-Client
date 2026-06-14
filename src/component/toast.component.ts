@@ -1,7 +1,7 @@
 import { Component, Input } from '@angular/core';
 import {NgClass, NgIf} from '@angular/common';
 
-export type ToastType = 'warning' | 'error';
+export type ToastType = 'warning' | 'error' | 'info';
 
 @Component({
   selector: 'app-toast',

@@ -47,6 +47,7 @@
         <div class="font-Gen3 text-4xl">
           Connected to Session: <br>
           {{sessionId}}
+          <button (click)="copySessionId()" class="btn text-2xl btn-sm">Copy</button>
         </div>
       </div>
       <button *ngIf=hasReached(StepsState.WaitingForPartner) (click)="leaveSession()" class="btn btn-sm text-2xl absolute bottom-3 right-2">Leave Session</button>
