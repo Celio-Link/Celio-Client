@@ -95,6 +95,7 @@
           Partner has connected!
         </p>
       </div>
+      <p *ngIf="preStartInstruction && isCurrentlyIn(StepsState.WaitingForPartner)" class="font-Gen3 text-2xl mt-3" [innerHTML]="preStartInstruction"></p>
     </div>
     <div class="divider"></div>
   </div>
