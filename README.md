@@ -18,12 +18,13 @@ To use this system, you need:
 
 - A **Celio-Device** (hardware dongle)
 - A **Game Boy Advance link cable**
-- A Chromium-based browser (WebUSB required)
+- A browser with WebUSB (Chromium-based — Chrome/Edge) or WebSerial (Firefox 151+)
 
 The web client is available at:  
 https://celi0.link  
 
-> ⚠ Firefox is not supported because it does not support the WebUSB API.
+> ℹ Chromium browsers use WebUSB. Firefox 151+ is supported via WebSerial (the
+> connect button falls back to "Connect Serial" automatically when WebUSB is unavailable).
 
 ---
 

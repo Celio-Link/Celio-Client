@@ -1,6 +1,6 @@
 import {Component, inject, ChangeDetectorRef} from '@angular/core';
 import {NgClass, NgForOf, NgIf} from '@angular/common';
-import {CommandType, LinkStatus, Mode} from '../../shared/linkExchange/common';
+import {CommandType, LinkStatus, LinkMode} from '../../shared/linkExchange/common';
 import {Subscription} from 'rxjs';
 import {PkmnFile} from './pkmnFile';
 import {LinkDeviceService} from '../../services/linkdevice.service';
@@ -64,13 +64,10 @@ export class TradeEmuComponent extends CelioPageAbstract<StepsState>{
     this.statusSubscription.unsubscribe();
   }
 
-  connect(): void {
-    if (navigator.usb == undefined) {
-      this.webUsbError = true;
-      return;
-    }
+  connect(kind: 'usb' | 'serial' = 'usb'): void {
+    if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
 
-    this.linkDeviceService.connectDevice()
+    this.linkDeviceService.connectDevice(kind)
       .then(isConnected => {
           this.linkDeviceConnected = isConnected
           if (isConnected) {
@@ -126,7 +123,7 @@ export class TradeEmuComponent extends CelioPageAbstract<StepsState>{
       });
 
       let args: Uint8Array = new Uint8Array(1);
-      args[0] = Mode.tradeEmu;
+      args[0] = LinkMode.tradeEmu;
       this.linkDeviceService.sendCommand(CommandType.SetMode, args).then(ok => {
         if (!ok) {
           clearTimeout(timeout);

@@ -1,6 +1,6 @@
 <div class="flex w-full flex-col">
   <ul class="steps w-full">
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect Celio Device</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect Device</li>
     <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Selecting Pokémon</li>
     <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Uploading Pokémon</li>
     <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Ready</li>
@@ -11,15 +11,17 @@
   <div class="box relative">
     <div class="flex w-full h-[5rem]">
       <div *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" class="card rounded-box grid grow place-items-center">
-        <button (click)="connect()" class="btn btn-lg">Connect Celio Device</button>
+        <div class="flex gap-2">
+          <button *ngIf="connectTransport" (click)="connect(connectTransport)" class="btn">{{ connectLabel }}</button>
+        </div>
       </div>
       <div *ngIf="hasReached(StepsState.SelectingPokemon)" class="font-Gen3 text-4xl">
-        Celio connection status: <br>
+        Connection status: <br>
         Ready!
       </div>
       <div *ngIf="webUsbError" class="font-Gen3 text-4xl">
-        Web USB is not supported by this browser.<br>
-        Please use Chrome or another Chromium based browser.
+        Neither WebUSB nor WebSerial is supported by this browser.<br>
+        Use Chrome/Edge (WebUSB or WebSerial) or Firefox 151+ (WebSerial).
       </div>
     </div>
     <img *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />

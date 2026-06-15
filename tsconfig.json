@@ -15,7 +15,7 @@
     "target": "ES2022",
     "module": "preserve",
     "typeRoots": ["node_modules/@types"],
-    "types": ["w3c-web-usb"]
+    "types": ["w3c-web-usb", "w3c-web-serial"]
   },
   "angularCompilerOptions": {
     "enableI18nLegacyMessageIdFormat": false,

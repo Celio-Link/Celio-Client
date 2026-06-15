@@ -1,7 +1,8 @@
 import {ChangeDetectorRef, Component, inject, ViewChild} from '@angular/core';
 import { NgClass, NgIf } from '@angular/common';
+import { ActivatedRoute } from '@angular/router';
 
-import {CommandType} from '../../shared/linkExchange/common';
+import {CommandType, LinkMode} from '../../shared/linkExchange/common';
 
 import {Subscription, take} from 'rxjs';
 import {PlayerSessionService} from '../../services/playersession.service';
@@ -16,10 +17,11 @@ import {CelioPageAbstract} from '../shared/celioPage.abstact';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
-  JoiningSession = 1,
-  WaitingForPartner = 2,
-  SettingLinkMode = 3,
-  Ready = 4
+  SelectGame = 1,
+  JoiningSession = 2,
+  WaitingForPartner = 3,
+  SettingLinkMode = 4,
+  Ready = 5
 }
 
 @Component({
@@ -30,14 +32,19 @@ enum StepsState {
     NgClass,
     ToastComponent
   ],
-  templateUrl: './onlineLink.component.html'
+  templateUrl: './awOnlineLink.component.html'
 })
 
-export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
+export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   @ViewChild(ToastComponent) toast!: ToastComponent;
 
   private linkDeviceService = inject(LinkDeviceService)
+
+  // Per-route (app.routes.ts): which firmware mode this page drives and the matching ready-screen copy.
+  protected awVariant: number | undefined;
+  protected readyInstruction: string | undefined;
+  protected preStartInstruction: string | undefined;
 
   protected sessionId: string | undefined = "";
 
@@ -48,6 +55,11 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
   private disconnectSubscription: Subscription;
 
   private linkSession: LinkExchangeSession | undefined = undefined;
+
+  // The Advance Wars protocol proxy shipped in firmware 2.2.0; the relay in
+  // older builds can't link over the internet, so block AW sessions early
+  // instead of failing mid-handshake. Other modes work on older firmware.
+  private static readonly awMinFirmware = { major: 2, minor: 2, patch: 0 };
 
   constructor(cd: ChangeDetectorRef, private playerSessionService: PlayerSessionService, private socket: WebSocketService) {
     super(cd);
@@ -78,9 +90,9 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
     });
   }
 
-  ngOnInit() {
+  async ngOnInit() {
     if (this.linkDeviceService.isConnected()) {
-      this.advanceLinkState(StepsState.JoiningSession);
+      this.advanceLinkState(StepsState.SelectGame);
     }
   }
 
@@ -97,15 +109,54 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
     this.linkDeviceService.connectDevice(kind)
       .then(async isConnected => {
-          if (isConnected) {
-            this.advanceLinkState(StepsState.JoiningSession);
-          }
+        if (isConnected) {
+          this.advanceLinkState(StepsState.SelectGame);
         }
-      )
+      }
+    )
+  }
+
+  // Advance Wars covers two games with different link protocols; the page
+  // blocks until the user picks one so the right variant reaches the firmware.
+  protected get awVariantNeeded(): boolean {
+    return this.awVariant === undefined;
+  }
+
+  protected async selectAwVariant(variant: number) {
+    if (!await this.checkAwFirmware()) return;
+    this.awVariant = variant;
+    this.preStartInstruction = "Before you press Start, connect your Game Boy Advance with the link cable and bring "
+      + (variant === 2 ? "Advance Wars 2" : "Advance Wars") + " to the <b>\"Preparing to link\"</b> screen.";
+    this.readyInstruction = (variant === 2 ? "Advance Wars 2" : "Advance Wars")
+      + "<br>Link Mode is now ready! Tip: Advance through setup menus carefully to avoid desyncs. Transferring custom maps can take several minutes.";
+    this.advanceLinkState(StepsState.JoiningSession);
+  }
+
+  protected resetAwVariant() {
+    this.awVariant = undefined;
+    this.leaveSession()
+    this.advanceLinkState(StepsState.SelectGame);
+  }
+
+  private async checkAwFirmware(): Promise<boolean> {
+    const min = AwOnlineLinkComponent.awMinFirmware;
+    const version = await LinkDeviceUtils.getFirmwareVersion(this.linkDeviceService);
+    const ok = version !== undefined && (
+      version.major !== min.major ? version.major > min.major :
+      version.minor !== min.minor ? version.minor > min.minor :
+      version.patch >= min.patch);
+    if (ok) return true;
+
+    const have = version ? `v${version.major}.${version.minor}.${version.patch}` : 'an unknown version';
+    this.toast?.show(
+      `Advance Wars needs firmware v${min.major}.${min.minor}.${min.patch} or newer — this adapter is running ${have}. Update it from the GBLink launcher and reconnect.`,
+      'error', 8000);
+    await this.linkDeviceService.disconnect();
+    return false;
   }
 
   start() {
-    LinkDeviceUtils.tryEnableLinkMode(new StatusEmitterLinkDevice(this.linkDeviceService))
+    LinkDeviceUtils.tryEnableLinkMode(new StatusEmitterLinkDevice(this.linkDeviceService), LinkMode.advanceWars, this.awVariant)
       .then(() => {
         this.advanceLinkState(StepsState.Ready);
       })

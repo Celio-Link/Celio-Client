@@ -91,13 +91,10 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
     this.linkSession?.destroy();
   }
 
-  connect(): void {
-    if (navigator.usb == undefined) {
-      this.webUsbError = true;
-      return;
-    }
+  connect(kind: 'usb' | 'serial' = 'usb'): void {
+    if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
 
-    this.linkDeviceService.connectDevice()
+    this.linkDeviceService.connectDevice(kind)
       .then(isConnected => {
         this.linkDeviceConnected = isConnected
         if (isConnected) {

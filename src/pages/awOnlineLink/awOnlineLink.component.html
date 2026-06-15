@@ -1,10 +1,11 @@
 <div class="flex w-full flex-col">
   <ul class="steps w-full">
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect Celio Device</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Join Session</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Wait for Partner</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Start Link Mode</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Ready</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect Device</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Select Game</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Join Session</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait for Partner</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Start Link Mode</li>
+    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 5 }">Ready</li>
   </ul>
 
   <div class="divider"></div>
@@ -16,7 +17,7 @@
           <button *ngIf="connectTransport" (click)="connect(connectTransport)" class="btn">{{ connectLabel }}</button>
         </div>
       </div>
-      <div *ngIf="hasReached(StepsState.JoiningSession)" class="font-Gen3 text-4xl">
+      <div *ngIf="hasReached(StepsState.SelectGame)" class="font-Gen3 text-4xl">
         Connection status: <br>
         Ready!
       </div>
@@ -29,6 +30,30 @@
   </div>
 
   <div class="divider"></div>
+
+  <div [class.opacity-100]="hasReached(StepsState.SelectGame)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+    <div class="box relative">
+      <div *ngIf="isCurrentlyIn(StepsState.SelectGame)" class="flex w-full h-[5rem]">
+        <div class="card rounded-box grid grow place-items-center">
+          <button (click)="selectAwVariant(1)" class="btn">Advance Wars</button>
+        </div>
+        <div class="divider divider-horizontal"><div class="font-Gen3 text-4xl">OR</div></div>
+        <div class="card rounded-box grid grow place-items-center">
+          <button (click)="selectAwVariant(2)" class="btn">Advance Wars 2</button>
+        </div>
+      </div>
+      <div *ngIf="hasReached(StepsState.JoiningSession)">
+        <button (click)="resetAwVariant()" class="btn btn-sm text-2xl absolute bottom-3 right-2">
+          Change Game
+        </button>
+        <div class="font-Gen3 text-4xl">
+          Selected Game: <br>
+          {{ awVariant === 2 ? 'Advance Wars 2' : 'Advance Wars' }}
+        </div>
+      </div>
+    </div>
+    <div class="divider"></div>
+  </div>
 
   <div [class.opacity-100]="hasReached(StepsState.JoiningSession)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
@@ -60,9 +85,9 @@
   <div [class.opacity-100]="hasReached(StepsState.WaitingForPartner)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
       <div *ngIf="isCurrentlyIn(StepsState.WaitingForPartner)" class="flex w-full h-[5rem]">
-        <p class="font-Gen3 text-4xl waiting">
-          Waiting for Partner<span class="dots"></span>
-        </p>
+          <p class="font-Gen3 text-4xl waiting">
+            Waiting for Partner<span class="dots"></span>
+          </p>
       </div>
       <div *ngIf="hasReached(StepsState.SettingLinkMode)" class="flex w-full h-[5rem]">
         <p class="font-Gen3 text-4xl waiting">
@@ -70,12 +95,14 @@
           Partner has connected!
         </p>
       </div>
+      <p *ngIf="preStartInstruction && isCurrentlyIn(StepsState.WaitingForPartner)" class="font-Gen3 text-2xl mt-3" [innerHTML]="preStartInstruction"></p>
     </div>
     <div class="divider"></div>
   </div>
 
   <div [class.opacity-100]="hasReached(StepsState.SettingLinkMode)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
+      <p *ngIf="preStartInstruction && isCurrentlyIn(StepsState.SettingLinkMode)" class="font-Gen3 text-2xl mb-3" [innerHTML]="preStartInstruction"></p>
       <div class="flex w-full h-[5rem]">
         <div class="card rounded-box grid h-20 grow place-items-center">
           <button (click)="start()" class="btn btn-lg" [disabled]="!isCurrentlyIn(StepsState.SettingLinkMode)">Start</button>
@@ -101,10 +128,7 @@
         <img src="assets/GBA.png" class="image-pixelated h-48 w-auto relative mr-[8rem]"/>
       </div>
 
-      <div class="box mt-12 font-Gen3 text-4xl">
-        Link Mode is now ready! If you haven't already, connect the <br>
-        Link-Cable to your Gameboy Advance and talk to the Pokémon Center clerk.
-      </div>
+      <div class="box mt-12 font-Gen3 text-4xl" [innerHTML]="readyInstruction"></div>
     </div>
   </div>
 </div>

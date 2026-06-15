@@ -25,6 +25,7 @@ export enum LinkStatus {
 export enum CommandType {
   SetMode = 0x00,
   Cancel = 0x01,
+  GetFirmwareInfo = 0x0F,
   SetModeMaster = 0x10,
   SetModeSlave = 0x11,
   StartHandshake= 0x12,
@@ -33,9 +34,16 @@ export enum CommandType {
   EmuSessionStart = 0xFF0A
 }
 
-export enum Mode {
+export interface FirmwareVersion {
+  major: number;
+  minor: number;
+  patch: number;
+}
+
+export enum LinkMode {
   tradeEmu = 0x00,
-  onlineLink = 0x01
+  onlineLink = 0x01,
+  advanceWars = 0x04
 }
 
 export interface CommandPacket {
