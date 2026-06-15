@@ -1,0 +1,23 @@
+<div class="box relative">
+  <div class="flex w-full h-[5rem]">
+    <div *ngIf="active" class="card rounded-box grid grow place-items-center">
+      <div class="flex gap-2">
+        <button *ngIf="connectTransport" (click)="connect()" class="btn">
+          {{ connectLabel() }}
+        </button>
+      </div>
+    </div>
+
+    <div *ngIf="!active" class="font-Gen3 text-4xl">
+      Celio connection status: <br>
+      Ready!
+    </div>
+
+    <div *ngIf="webUsbError" class="font-Gen3 text-4xl">
+      Neither WebUSB nor WebSerial is supported by this browser.<br>
+      Use Chrome/Edge (WebUSB or WebSerial) or Firefox 151+ (WebSerial).
+    </div>
+  </div>
+
+  <img *ngIf="active" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+</div>

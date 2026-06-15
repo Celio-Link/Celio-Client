@@ -65,7 +65,7 @@ export class TradeEmuComponent extends CelioPageAbstract<StepsState>{
   }
 
   connect(kind: 'usb' | 'serial' = 'usb'): void {
-    if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
+    //if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
 
     this.linkDeviceService.connectDevice(kind)
       .then(isConnected => {

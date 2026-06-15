@@ -4,7 +4,7 @@ import {Subscription, take} from 'rxjs';
 import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
 import {EmulatorSelectionService, SupportedEmulators} from '../../services/emulatorSelection.service';
 import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
-import {ToastComponent} from '../../component/toast.component';
+import {ToastComponent} from '../../component/toast/toast.component';
 import {PlayerSessionService} from '../../services/playersession.service';
 import {WebSocketService} from '../../services/websocket.service';
 import {StatusEmitterWebsocket} from '../../shared/linkExchange/statusEmitter/statusEmitter.websocket';

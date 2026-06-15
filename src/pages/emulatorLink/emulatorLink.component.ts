@@ -6,7 +6,7 @@ import {Subscription, take} from 'rxjs';
 import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
 import {CommandEmitterWebsocket} from '../../shared/linkExchange/commandEmitter/commandEmitter.websocket';
 import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
-import {ToastComponent} from '../../component/toast.component';
+import {ToastComponent} from '../../component/toast/toast.component';
 import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
 import {CelioPageAbstract} from '../shared/celioPage.abstact';
 import {EmulatorSelectionService, SupportedEmulators} from '../../services/emulatorSelection.service';
@@ -92,7 +92,7 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
   }
 
   connect(kind: 'usb' | 'serial' = 'usb'): void {
-    if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
+    //if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
 
     this.linkDeviceService.connectDevice(kind)
       .then(isConnected => {

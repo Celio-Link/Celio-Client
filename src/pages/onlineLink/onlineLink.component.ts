@@ -7,12 +7,13 @@ import {Subscription, take} from 'rxjs';
 import {PlayerSessionService} from '../../services/playersession.service';
 import {WebSocketService} from '../../services/websocket.service';
 import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
-import {ToastComponent} from '../../component/toast.component';
+import {ToastComponent} from '../../component/toast/toast.component';
 import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
 import {CommandEmitterSocketIO} from '../../shared/linkExchange/commandEmitter/commandEmitter.socketIO';
 import {LinkDeviceService} from '../../services/linkdevice.service';
 import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
 import {CelioPageAbstract} from '../shared/celioPage.abstact';
+import {CelioConnectionStatusComponent} from '../../component/panel/connect/connect.component';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -28,7 +29,8 @@ enum StepsState {
   imports: [
     NgIf,
     NgClass,
-    ToastComponent
+    ToastComponent,
+    CelioConnectionStatusComponent
   ],
   templateUrl: './onlineLink.component.html'
 })
@@ -36,6 +38,7 @@ enum StepsState {
 export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   @ViewChild(ToastComponent) toast!: ToastComponent;
+  @ViewChild(CelioConnectionStatusComponent) connectionPanel!: CelioConnectionStatusComponent;
 
   private linkDeviceService = inject(LinkDeviceService)
 
@@ -84,24 +87,18 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
     }
   }
 
+  ngAfterViewInit() {
+    this.connectionPanel.next.subscribe(() => {this.advanceLinkState(StepsState.JoiningSession);})
+  }
+
+  test() { return true }
+
   ngOnDestroy() {
     this.partnerSubscription.unsubscribe();
     this.linkSessionCloseSubscription.unsubscribe();
     this.disconnectSubscription.unsubscribe();
     this.socket.disconnect();
     this.linkSession?.destroy();
-  }
-
-  connect(kind: 'usb' | 'serial' = 'usb'): void {
-    if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
-
-    this.linkDeviceService.connectDevice(kind)
-      .then(async isConnected => {
-          if (isConnected) {
-            this.advanceLinkState(StepsState.JoiningSession);
-          }
-        }
-      )
   }
 
   start() {

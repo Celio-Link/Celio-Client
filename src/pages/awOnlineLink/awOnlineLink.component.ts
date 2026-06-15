@@ -1,6 +1,5 @@
 import {ChangeDetectorRef, Component, inject, ViewChild} from '@angular/core';
 import { NgClass, NgIf } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
 
 import {CommandType, LinkMode} from '../../shared/linkExchange/common';
 
@@ -8,12 +7,13 @@ import {Subscription, take} from 'rxjs';
 import {PlayerSessionService} from '../../services/playersession.service';
 import {WebSocketService} from '../../services/websocket.service';
 import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
-import {ToastComponent} from '../../component/toast.component';
+import {ToastComponent} from '../../component/toast/toast.component';
 import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
 import {CommandEmitterSocketIO} from '../../shared/linkExchange/commandEmitter/commandEmitter.socketIO';
 import {LinkDeviceService} from '../../services/linkdevice.service';
 import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
 import {CelioPageAbstract} from '../shared/celioPage.abstact';
+import {CelioConnectionStatusComponent} from '../../component/panel/connect/connect.component';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -38,6 +38,7 @@ enum StepsState {
 export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   @ViewChild(ToastComponent) toast!: ToastComponent;
+  @ViewChild(CelioConnectionStatusComponent) connectionStatus!: CelioConnectionStatusComponent;
 
   private linkDeviceService = inject(LinkDeviceService)
 
@@ -104,7 +105,7 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
   }
 
   connect(kind: 'usb' | 'serial' = 'usb'): void {
-    if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
+    //if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
 
     this.linkDeviceService.connectDevice(kind)
       .then(async isConnected => {
