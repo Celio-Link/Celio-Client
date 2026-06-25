@@ -5,6 +5,7 @@ import {Subscription} from 'rxjs';
 import {PkmnFile} from './pkmnFile';
 import {LinkDeviceService} from '../../services/linkdevice.service';
 import {CelioPageAbstract} from '../shared/celioPage.abstact';
+import {CelioConnectionStatusComponent} from '../../component/panel/connect/connect.component';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -19,7 +20,8 @@ enum StepsState {
   imports: [
     NgIf,
     NgClass,
-    NgForOf
+    NgForOf,
+    CelioConnectionStatusComponent
   ],
   templateUrl: './tradeEmu.component.html'
 })

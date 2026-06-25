@@ -1,9 +1,9 @@
 import {ChangeDetectorRef, Component, inject, ViewChild} from '@angular/core';
-import { NgClass, NgIf } from '@angular/common';
+import {NgClass, NgIf} from '@angular/common';
 
 import {CommandType} from '../../shared/linkExchange/common';
 
-import {Subscription, take} from 'rxjs';
+import {Subscription} from 'rxjs';
 import {PlayerSessionService} from '../../services/playersession.service';
 import {WebSocketService} from '../../services/websocket.service';
 import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
@@ -14,6 +14,7 @@ import {LinkDeviceService} from '../../services/linkdevice.service';
 import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
 import {CelioPageAbstract} from '../shared/celioPage.abstact';
 import {CelioConnectionStatusComponent} from '../../component/panel/connect/connect.component';
+import {CelioSessionComponent, SessionState} from '../../component/panel/session/session.compomemt';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -30,7 +31,8 @@ enum StepsState {
     NgIf,
     NgClass,
     ToastComponent,
-    CelioConnectionStatusComponent
+    CelioConnectionStatusComponent,
+    CelioSessionComponent
   ],
   templateUrl: './onlineLink.component.html'
 })
@@ -39,46 +41,23 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   @ViewChild(ToastComponent) toast!: ToastComponent;
   @ViewChild(CelioConnectionStatusComponent) connectionPanel!: CelioConnectionStatusComponent;
+  @ViewChild(CelioSessionComponent) sessionPanel!: CelioSessionComponent;
 
   private linkDeviceService = inject(LinkDeviceService)
-
-  protected sessionId: string | undefined = "";
-
   protected StepsState = StepsState;
-
-  private partnerSubscription: Subscription
-  private linkSessionCloseSubscription: Subscription
   private disconnectSubscription: Subscription;
 
-  private linkSession: LinkExchangeSession | undefined = undefined;
 
   constructor(cd: ChangeDetectorRef, private playerSessionService: PlayerSessionService, private socket: WebSocketService) {
     super(cd);
     this.stepState = StepsState.ConnectingCelioDevice;
 
-    this.partnerSubscription = this.playerSessionService.partnerEvents$.subscribe(partnerConnected => {
-      if (partnerConnected) {
-        this.advanceLinkState(StepsState.SettingLinkMode);
-      }
-      else {
-        this.toast.show("Partner has disconnected");
-        this.advanceLinkState(StepsState.WaitingForPartner);
-      }
-    });
-
     this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(disconnect => {
-      this.playerSessionService.leaveSession();
-      this.socket.disconnect();
-      this.linkSession?.destroy();
+      this.sessionPanel.leaveSession()
       this.advanceLinkState(StepsState.ConnectingCelioDevice);
     })
 
-    this.linkSessionCloseSubscription = this.playerSessionService.sessionClose$.subscribe(() => {
-      this.toast.show("Session has ended");
-      this.socket.disconnect();
-      this.linkSession?.destroy();
-      this.advanceLinkState(StepsState.JoiningSession);
-    });
+
   }
 
   ngOnInit() {
@@ -88,17 +67,26 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
   }
 
   ngAfterViewInit() {
-    this.connectionPanel.next.subscribe(() => {this.advanceLinkState(StepsState.JoiningSession);})
+    this.connectionPanel.next.subscribe(() => { this.advanceLinkState(StepsState.JoiningSession);})
+    this.sessionPanel.createSessionEvent.subscribe(() => {
+      this.sessionPanel.setLinkSession(new LinkExchangeSession(new CommandEmitterSocketIO(this.socket), new StatusEmitterLinkDevice(this.linkDeviceService)))
+    })
+    this.sessionPanel.sessionStateChange.subscribe(state => {
+      switch (state) {
+        case SessionState.Start: this.advanceLinkState(StepsState.JoiningSession); break;
+        case SessionState.Waiting: this.advanceLinkState(StepsState.WaitingForPartner); break;
+        case SessionState.Commit: this.advanceLinkState(StepsState.SettingLinkMode); break;
+      }
+    })
   }
 
   test() { return true }
 
   ngOnDestroy() {
-    this.partnerSubscription.unsubscribe();
-    this.linkSessionCloseSubscription.unsubscribe();
+    //this.partnerSubscription.unsubscribe();
+    //this.linkSessionCloseSubscription.unsubscribe();
     this.disconnectSubscription.unsubscribe();
-    this.socket.disconnect();
-    this.linkSession?.destroy();
+    this.sessionPanel.leaveSession()
   }
 
   start() {
@@ -115,44 +103,6 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   disconnectCelioDevice(): void {
     this.linkDeviceService.sendCommand(CommandType.Cancel);
-    this.leaveSession();
-  }
-
-  async enterSession(userSessionId?: string) {
-    if (!await this.socket.connect()) {
-      this.toast.show("Could not connect to Server", 'error', 4000)
-      console.error("Could not connect to Server");
-    }
-    this.playerSessionService.enterSession(userSessionId).then(session => {
-      this.createLinkSession();
-      if (userSessionId) {
-        this.advanceLinkState(StepsState.SettingLinkMode);
-      } else {
-        this.advanceLinkState(StepsState.WaitingForPartner);
-      }
-      this.sessionId = session.id;
-    }).catch(error => {
-      this.toast.show(error, 'error', 4000)
-      console.error(error);
-      this.socket.disconnect();
-      this.advanceLinkState(StepsState.JoiningSession);
-    })
-  }
-
-  leaveSession() {
-    this.playerSessionService.leaveSession();
-    this.socket.disconnect();
-    this.linkSession?.destroy();
-    this.advanceLinkState(StepsState.JoiningSession);
-  }
-
-  createLinkSession() {
-    this.linkSession?.destroy();
-    this.linkSession = new LinkExchangeSession(new CommandEmitterSocketIO(this.socket), new StatusEmitterLinkDevice(this.linkDeviceService));
-  }
-
-  copySessionId() {
-    navigator.clipboard.writeText(this.sessionId!);
-    this.toast.show("Session Id copied", 'info', 1800)
+    this.sessionPanel.leaveSession()
   }
 }

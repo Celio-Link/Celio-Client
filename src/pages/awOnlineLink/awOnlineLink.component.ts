@@ -30,7 +30,8 @@ enum StepsState {
   imports: [
     NgIf,
     NgClass,
-    ToastComponent
+    ToastComponent,
+    CelioConnectionStatusComponent
   ],
   templateUrl: './awOnlineLink.component.html'
 })

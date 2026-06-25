@@ -10,6 +10,7 @@ import {ToastComponent} from '../../component/toast/toast.component';
 import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
 import {CelioPageAbstract} from '../shared/celioPage.abstact';
 import {EmulatorSelectionService, SupportedEmulators} from '../../services/emulatorSelection.service';
+import {CelioConnectionStatusComponent} from '../../component/panel/connect/connect.component';
 
 
 enum StepsState {
@@ -27,7 +28,8 @@ enum StepsState {
   imports: [
     NgIf,
     NgClass,
-    ToastComponent
+    ToastComponent,
+    CelioConnectionStatusComponent
   ],
   templateUrl: './emulatorLink.component.html'
 })
