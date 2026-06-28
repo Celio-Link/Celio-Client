@@ -56,8 +56,6 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
       this.sessionPanel.leaveSession()
       this.advanceLinkState(StepsState.ConnectingCelioDevice);
     })
-
-
   }
 
   ngOnInit() {
@@ -83,8 +81,6 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
   test() { return true }
 
   ngOnDestroy() {
-    //this.partnerSubscription.unsubscribe();
-    //this.linkSessionCloseSubscription.unsubscribe();
     this.disconnectSubscription.unsubscribe();
     this.sessionPanel.leaveSession()
   }
