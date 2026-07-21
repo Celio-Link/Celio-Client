@@ -4,12 +4,15 @@ import {Subscription, take} from 'rxjs';
 import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
 import {EmulatorSelectionService, SupportedEmulators} from '../../services/emulatorSelection.service';
 import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
-import {ToastComponent} from '../../component/toast.component';
+import {ToastComponent} from '../../component/toast/toast.component';
 import {PlayerSessionService} from '../../services/playersession.service';
 import {WebSocketService} from '../../services/websocket.service';
 import {StatusEmitterWebsocket} from '../../shared/linkExchange/statusEmitter/statusEmitter.websocket';
 import {CommandEmitterSocketIO} from '../../shared/linkExchange/commandEmitter/commandEmitter.socketIO';
 import {CelioPageAbstract} from '../shared/celioPage.abstact';
+import {CelioSessionComponent, SessionState} from '../../component/panel/session/session.compomemt';
+import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
+import {ToastService} from '../../services/toast.service';
 
 enum StepsState {
   ChooseEmulator = 0,
@@ -27,13 +30,12 @@ enum StepsState {
   imports: [
     NgIf,
     NgClass,
-    ToastComponent
+    CelioSessionComponent
   ],
   templateUrl: './emulatorOnlineLink.component.html'
 })
 export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
-
-  @ViewChild(ToastComponent) toast!: ToastComponent;
+  @ViewChild(CelioSessionComponent) sessionPanel!: CelioSessionComponent;
 
   protected StepsState = StepsState;
   protected readonly SupportedEmulators = SupportedEmulators;
@@ -41,51 +43,42 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
   protected closing: boolean = false;
   protected timeoutId: number | undefined; //this is trash, pls fix
 
-  private partnerSubscription: Subscription
-  private linkSessionCloseSubscription: Subscription
-
-  private linkSession: LinkExchangeSession | undefined = undefined;
   private statusEmitterWebsocket: StatusEmitterWebsocket | undefined = undefined;
-  protected sessionId: string | undefined = "";
 
-  constructor(cd: ChangeDetectorRef,
-      private playerSessionService: PlayerSessionService,
-      private socket: WebSocketService,
-      private emulatorSelection: EmulatorSelectionService
-  ) {
+  constructor(cd: ChangeDetectorRef, private toastService: ToastService, private socket: WebSocketService, private emulatorSelection: EmulatorSelectionService) {
     super(cd);
     this.stepState = StepsState.ChooseEmulator;
-
-    this.partnerSubscription = this.playerSessionService.partnerEvents$.subscribe(partnerConnected => {
-      if (partnerConnected) {
-        console.log("Partner connected");
-        this.advanceLinkState(StepsState.SettingLinkMode);
-      }
-      else {
-        if (this.stepState == StepsState.Ready) {
-          this.statusEmitterWebsocket?.destroy();
-          this.toast.show("Partner has disconnected, please create a new Session");
-        } else {
-          this.advanceLinkState(StepsState.WaitingForPartner);
-          this.toast.show("Partner has disconnected");
-        }
-      }
-    });
-
-    this.linkSessionCloseSubscription = this.playerSessionService.sessionClose$.subscribe(() => {
-      this.toast.show("Session has ended");
-      this.statusEmitterWebsocket?.destroy();
-    });
   }
 
   ngOnInit() {
     if (this.emulatorSelection.isSetupComplete()) { this.startWaitForServer() }
   }
 
+  ngAfterViewInit() {
+    this.sessionPanel.createSessionEvent.subscribe(() => {
+      if (this.statusEmitterWebsocket == undefined) return;
+      this.sessionPanel.setLinkSession(new LinkExchangeSession(new CommandEmitterSocketIO(this.socket), this.statusEmitterWebsocket))
+    })
+    this.sessionPanel.sessionStateChange.subscribe(state => {
+      switch (state) {
+        case SessionState.Start:
+          this.advanceLinkState(StepsState.JoiningSession);
+          this.statusEmitterWebsocket?.destroy();
+          break;
+        case SessionState.Waiting:
+          if (this.stepState == StepsState.Ready) {
+            this.statusEmitterWebsocket?.destroy();
+          } else {
+            this.advanceLinkState(StepsState.WaitingForPartner);
+          }
+          break;
+        case SessionState.Commit: this.advanceLinkState(StepsState.SettingLinkMode); break;
+      }
+    })
+  }
+
   ngOnDestroy() {
     this.closing = true;
-    this.partnerSubscription.unsubscribe();
-    this.linkSessionCloseSubscription.unsubscribe();
     this.statusEmitterWebsocket?.destroy();
   }
 
@@ -96,9 +89,7 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   private cleanup() {
     console.log("Cleanup");
-    this.playerSessionService.leaveSession();
-    this.socket.disconnect();
-    this.linkSession?.destroy();
+    this.sessionPanel.leaveSession();
     if (!this.closing) this.startWaitForServer();
   }
 
@@ -112,32 +103,25 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
       .pipe(take(1))
       .subscribe(() => {this.cleanup()});
 
+    this.closing = false;
     this.timeoutId = setTimeout(() => {
       this.statusEmitterWebsocket?.open().then(() => {
         this.timeoutId = undefined;
-        this.advanceLinkState(StepsState.JoiningSession)
+        this.statusEmitterWebsocket?.checkVersion().then((passedCheck) => {
+          console.log("Passed version check: " + passedCheck);
+          if (passedCheck) {
+            this.advanceLinkState(StepsState.JoiningSession)
+          } else {
+            this.emulatorSelection.setSetupComplete(false);
+            this.closing = true;
+            this.statusEmitterWebsocket?.destroy();
+            this.advanceLinkState(StepsState.DownloadPlugin)
+            this.toastService.show("Please download the newest script version.", 'error', 3000)
+          }
+        })
+
       })
     }, delay)
-  }
-
-  async enterSession(userSessionId?: string) {
-    if (!await this.socket.connect()) {
-      this.toast.show("Could not connect to Server", 'error', 4000)
-      console.error("Could not connect to Server");
-    }
-    this.playerSessionService.enterSession(userSessionId).then(session => {
-      this.createLinkSession();
-      if (userSessionId) {
-        this.advanceLinkState(StepsState.SettingLinkMode);
-      } else {
-        this.advanceLinkState(StepsState.WaitingForPartner);
-      }
-      this.sessionId = session.id;
-    }).catch(error => {
-      this.toast.show(error, 'error', 4000)
-      console.error(error);
-      this.statusEmitterWebsocket?.destroy();
-    })
   }
 
   start() {
@@ -146,24 +130,10 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
         this.advanceLinkState(StepsState.Ready);
       })
       .catch(error => {
-        this.toast.show(error, 'error', 4000)
+        this.toastService.show(error, 'error', 4000)
+        this.statusEmitterWebsocket?.destroy();
         console.error(error);
       })
-  }
-
-  leaveSession() {
-    this.statusEmitterWebsocket?.destroy();
-  }
-
-  createLinkSession() {
-    this.linkSession?.destroy();
-    if (this.statusEmitterWebsocket == undefined) return;
-    this.linkSession = new LinkExchangeSession(new CommandEmitterSocketIO(this.socket), this.statusEmitterWebsocket);
-  }
-
-  copySessionId() {
-    navigator.clipboard.writeText(this.sessionId!);
-    this.toast.show("Session Id copied", 'info', 1800)
   }
 
   disconnect(): void {

@@ -1,0 +1,45 @@
+<div [class.opacity-100]="active" class="transition-opacity opacity-0 duration-500 ease-in-out">
+  <div [class.opacity-100]="active" class="transition-opacity opacity-0 duration-500 ease-in-out">
+    <div class="box relative">
+
+      <div *ngIf="state | isCurrentlyInState : SessionState.Start" class="flex w-full h-[5rem]">
+        <div class="card rounded-box grid grow place-items-center">
+          <button (click)="enterSession()" class="btn btn-lg">Create Session</button>
+        </div>
+        <div class="divider divider-horizontal"><div class="font-Gen3 text-4xl">OR</div></div>
+        <div class="card rounded-box grid grow place-items-center">
+          <input #sessionInput (keydown.enter)="enterSession(sessionInput.value)" type="text" placeholder="Enter Session Id" class="input input-lg w-3xs font-Gen3 text-2xl" />
+        </div>
+      </div>
+
+      <div *ngIf="state | hasReachedState : SessionState.Waiting" class="flex w-full h-[5rem]">
+        <div class="font-Gen3 text-4xl">
+          Connected to Session: <br>
+          {{sessionId}}
+          <button (click)="copySessionId()" class="btn text-2xl btn-sm">Copy</button>
+        </div>
+      </div>
+      <button *ngIf="state | hasReachedState : SessionState.Waiting" (click)="leaveSession()" class="btn btn-sm text-2xl absolute bottom-3 right-2">Leave Session</button>
+      <img *ngIf="state | isCurrentlyInState : SessionState.Start" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+
+    </div>
+    <div class="divider"></div>
+  </div>
+
+  <div [class.opacity-100]="state | hasReachedState : SessionState.Waiting" class="transition-opacity opacity-0 duration-500 ease-in-out">
+    <div class="box relative">
+      <div *ngIf="state | isCurrentlyInState : SessionState.Waiting" class="flex w-full h-[5rem]">
+        <p class="font-Gen3 text-4xl waiting">
+          Waiting for Partner<span class="dots"></span>
+        </p>
+      </div>
+      <div *ngIf="state | hasReachedState : SessionState.Commit" class="flex w-full h-[5rem]">
+        <p class="font-Gen3 text-4xl waiting">
+          Waiting for Partner... <br>
+          Partner has connected!
+        </p>
+      </div>
+    </div>
+    <div class="divider"></div>
+  </div>
+</div>

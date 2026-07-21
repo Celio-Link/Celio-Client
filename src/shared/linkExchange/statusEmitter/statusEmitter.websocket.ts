@@ -8,6 +8,12 @@ export class StatusEmitterWebsocket extends StatusEmitterAbstract {
   private socket: WebSocket | undefined
   private retry: boolean = true
 
+  private versionRequest?: {
+    resolve: (value: boolean) => void;
+    reject: (reason?: any) => void;
+    timeout: ReturnType<typeof setTimeout>;
+  };
+
   open(retryDelay = 1000): Promise<void> {
     return new Promise((resolve, reject) => {
 
@@ -50,6 +56,13 @@ export class StatusEmitterWebsocket extends StatusEmitterAbstract {
 
             this.dataSubject.next(dataArray);
           }
+          else if (event.data === '0.2') {
+            if (this.versionRequest) {
+              clearTimeout(this.versionRequest.timeout);
+              this.versionRequest.resolve(true);
+              this.versionRequest = undefined;
+            }
+          }
           else {
             this.statusSubject.next(Number(event.data) as LinkStatus);
           }
@@ -58,6 +71,30 @@ export class StatusEmitterWebsocket extends StatusEmitterAbstract {
 
       connect();
     })
+  }
+
+  /*
+  this version check is an absolute disgrace in terms of code quality, but the way the socket protocol ic currently
+  structured leaves no other way.
+
+  DO NOT TAKE THIS AS AN EXAMPLE, IT IS A HORRIBLE WAY TO DO THIS AND WILL BE REMOVED IN THE FUTURE
+  */
+  checkVersion(): Promise<boolean> {
+    if (!this.socket) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.versionRequest = {
+        resolve,
+        reject,
+        timeout: setTimeout(() => {
+          this.versionRequest = undefined;
+          resolve(false);
+        }, 1000),
+      };
+      this.socket!.send("getVersion");
+    });
   }
 
   close$(): Observable<void> {

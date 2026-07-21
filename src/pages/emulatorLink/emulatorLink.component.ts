@@ -6,10 +6,12 @@ import {Subscription, take} from 'rxjs';
 import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
 import {CommandEmitterWebsocket} from '../../shared/linkExchange/commandEmitter/commandEmitter.websocket';
 import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
-import {ToastComponent} from '../../component/toast.component';
+import {ToastComponent} from '../../component/toast/toast.component';
 import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
 import {CelioPageAbstract} from '../shared/celioPage.abstact';
 import {EmulatorSelectionService, SupportedEmulators} from '../../services/emulatorSelection.service';
+import {CelioConnectionStatusComponent} from '../../component/panel/connect/connect.component';
+import {ToastService} from '../../services/toast.service';
 
 
 enum StepsState {
@@ -27,13 +29,13 @@ enum StepsState {
   imports: [
     NgIf,
     NgClass,
-    ToastComponent
+    CelioConnectionStatusComponent
   ],
   templateUrl: './emulatorLink.component.html'
 })
 export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
 
-  @ViewChild(ToastComponent) toast!: ToastComponent;
+  @ViewChild(CelioConnectionStatusComponent) connectionPanel!: CelioConnectionStatusComponent;
 
   private linkDeviceService = inject(LinkDeviceService)
   protected linkDeviceConnected = false;
@@ -49,7 +51,7 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
   private disconnectSubscription: Subscription;
   private statusSubscription: Subscription
 
-  constructor(cd: ChangeDetectorRef, private emulatorSelection: EmulatorSelectionService) {
+  constructor(cd: ChangeDetectorRef, private toastService: ToastService, private emulatorSelection: EmulatorSelectionService) {
     super(cd);
     this.stepState = StepsState.ConnectingCelioDevice;
 
@@ -63,12 +65,9 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
     this.statusSubscription = this.linkDeviceService.statusEvents$.subscribe(statusEvents => {
       console.log("Status: " + LinkStatus[statusEvents]);
       if (statusEvents === LinkStatus.LinkClosed) {
-
-        //FIXME When socket is closed by server, this and closed$ is called. Clean up closing states
         if (this.stepState == StepsState.WaitForLocalServer) return;
         this.linkSession?.destroy();
         this.linkSession = undefined;
-        this.startWaitForServer(1500);
       }
     });
   }
@@ -83,28 +82,16 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
     }
   }
 
+  ngAfterViewInit() {
+    this.connectionPanel.next.subscribe(() => { this.advanceLinkState(StepsState.ChooseEmulator);})
+  }
+
   ngOnDestroy() {
     this.closing = true;
     clearTimeout(this.timeoutId);
     this.disconnectSubscription.unsubscribe();
     this.statusSubscription.unsubscribe();
     this.linkSession?.destroy();
-  }
-
-  connect(kind: 'usb' | 'serial' = 'usb'): void {
-    if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
-
-    this.linkDeviceService.connectDevice(kind)
-      .then(isConnected => {
-        this.linkDeviceConnected = isConnected
-        if (isConnected) {
-          if (this.emulatorSelection.isSetupComplete()) {
-            this.startWaitForServer()
-          } else {
-            this.advanceLinkState(StepsState.ChooseEmulator);
-          }
-        }
-      })
   }
 
   emulatorSelected(emulator: SupportedEmulators) {
@@ -124,13 +111,27 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
       .subscribe(() => {
         if (this.linkDeviceService.isConnected()) {
           this.linkDeviceService.sendCommand(CommandType.Cancel);
+          console.log("Starting after Close$ fired");
           if (!this.closing) this.startWaitForServer();
         }
       });
+
+    this.closing = false;
     this.timeoutId = setTimeout(() => {
       commandEmitterWebsocket.open().then(() => {
         this.timeoutId = undefined;
-        this.advanceLinkState(StepsState.SettingLinkMode);
+        commandEmitterWebsocket?.checkVersion().then((passedCheck) => {
+          console.log("Passed version check: " + passedCheck);
+          if (passedCheck) {
+            this.advanceLinkState(StepsState.SettingLinkMode)
+          } else {
+            this.emulatorSelection.setSetupComplete(false);
+            this.closing = true;
+            this.linkSession?.destroy();
+            this.advanceLinkState(StepsState.DownloadPlugin)
+            this.toastService.show("Please download the newest script version.", 'error', 3000)
+          }
+        })
       })
     }, delay)
   }
@@ -141,7 +142,7 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
         this.advanceLinkState(StepsState.Ready);
       })
       .catch(error => {
-        this.toast.show(error, 'error', 4000)
+        this.toastService.show(error, 'error', 4000)
         console.error(error);
         this.disconnect();
         this.linkSession?.destroy();

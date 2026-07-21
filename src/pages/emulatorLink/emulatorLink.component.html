@@ -11,26 +11,7 @@
   <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
   <div class="divider"></div>
 
-  <div class="box relative">
-    <div class="flex w-full h-[5rem]">
-      <div *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" class="card rounded-box grid grow place-items-center">
-        <div class="flex gap-2">
-          <button *ngIf="connectTransport" (click)="connect(connectTransport)" class="btn">{{ connectLabel }}</button>
-        </div>
-      </div>
-      <div *ngIf="hasReached(StepsState.ChooseEmulator)" class="font-Gen3 text-4xl">
-        Connection status: <br>
-        Ready!
-      </div>
-      <div *ngIf="webUsbError" class="font-Gen3 text-4xl">
-        Neither WebUSB nor WebSerial is supported by this browser.<br>
-        Use Chrome/Edge (WebUSB or WebSerial) or Firefox 151+ (WebSerial).
-      </div>
-    </div>
-    <img *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
-  </div>
-
-  <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
+  <celio-connection-panel [active]="isCurrentlyIn(StepsState.ConnectingCelioDevice)"></celio-connection-panel>
 
   <div class="divider"></div>
 
@@ -64,7 +45,7 @@
       <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex w-full h-[5rem]">
         <div class="font-Gen3 text-4xl">
           Load via Tools → Scripting... → File → Load script...<br>
-          <button onclick="window.open('https://github.com/Exormeter/mgba/releases/tag/1.0.0', '_blank')" class="btn btn-sm text-2xl absolute bottom-3 left-2">
+          <button onclick="window.open('https://github.com/Exormeter/mGBA_celio_edition/releases/tag/2.0.0', '_blank')" class="btn btn-sm text-2xl absolute bottom-3 left-2">
             Download script
           </button>
           <button *ngIf=isCurrentlyIn(StepsState.DownloadPlugin) (click)="startWaitForServer()" class="btn btn-sm text-2xl absolute bottom-3 right-10">Next Step</button>
@@ -137,6 +118,4 @@
   <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
 
 </div>
-
-<app-toast></app-toast>
 

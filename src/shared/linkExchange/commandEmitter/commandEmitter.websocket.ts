@@ -2,6 +2,12 @@ import {CommandEmitterAbstract} from './commandEmitter.abstract'
 import {CommandType, DataArray, UInt16, CommandPacket, DataPacket, StatusPacket} from '../common';
 import {v4 as uuidv4} from 'uuid';
 
+type Version = {
+  major: number;
+  minor: number;
+  patch: number;
+};
+
 export class CommandEmitterWebsocket extends CommandEmitterAbstract {
 
   private socket: WebSocket | undefined
@@ -9,13 +15,32 @@ export class CommandEmitterWebsocket extends CommandEmitterAbstract {
 
   private sequence: number = 0
 
+  private versionRequest?: {
+    resolve: (value: boolean) => void;
+    reject: (reason?: any) => void;
+    timeout: ReturnType<typeof setTimeout>;
+  };
+
   open(retryDelay = 1000): Promise<void> {
     return new Promise((resolve, reject) => {
 
       const connect = () => {
         console.log("Trying to connect...");
 
-        this.socket = new WebSocket("http://localhost:51784", "celio_local");
+        try {
+          this.socket = new WebSocket("http://localhost:51784", "celio_local");
+        } catch (e) {
+          if (this.retry) {
+            console.log(`Retrying in ${retryDelay}ms...`);
+            setTimeout(connect, retryDelay);
+          }
+          else{
+            this.closeSubject.next();
+            console.log("Connection closed");
+          }
+        }
+
+        if (this.socket == undefined) return;
 
         this.socket.onopen = () => {
           console.log("Connected!");
@@ -55,6 +80,13 @@ export class CommandEmitterWebsocket extends CommandEmitterAbstract {
           else if (event.data === 'sessionClose') {
             this.destroy();
           }
+          else if (event.data === '0.2') {
+            if (this.versionRequest) {
+              clearTimeout(this.versionRequest.timeout);
+              this.versionRequest.resolve(true);
+              this.versionRequest = undefined;
+            }
+          }
           else {
             const cmd = Number(event.data) as CommandType
             const commandPacket: CommandPacket = { uuid: uuidv4(), command: cmd };
@@ -65,6 +97,30 @@ export class CommandEmitterWebsocket extends CommandEmitterAbstract {
 
       connect();
     })
+  }
+
+  /*
+  this version check is an absolute disgrace in terms of code quality, but the way the socket protocol ic currently
+  structured leaves no other way.
+
+  DO NOT TAKE THIS AS AN EXAMPLE, IT IS A HORRIBLE WAY TO DO THIS AND WILL BE REMOVED IN THE FUTURE
+  */
+  checkVersion(): Promise<boolean> {
+    if (!this.socket) {
+      return Promise.reject(new Error("Socket not connected"));
+    }
+
+    return new Promise((resolve, reject) => {
+      this.versionRequest = {
+        resolve,
+        reject,
+        timeout: setTimeout(() => {
+          this.versionRequest = undefined;
+          resolve(false);
+        }, 1000),
+      };
+      this.socket!.send("getVersion");
+    });
   }
 
   receiveData(data: DataPacket) : void {

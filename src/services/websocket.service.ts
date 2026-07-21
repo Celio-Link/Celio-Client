@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { io, Socket } from 'socket.io-client';
-import {firstValueFrom, fromEvent, map, mapTo, Observable, race, take} from 'rxjs';
+import {firstValueFrom, fromEvent, map, Observable, race, take} from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
 import { environment } from '../environments/environment';
 

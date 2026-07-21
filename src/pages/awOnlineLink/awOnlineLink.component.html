@@ -10,24 +10,7 @@
 
   <div class="divider"></div>
 
-  <div class="box relative">
-    <div class="flex w-full h-[5rem]">
-      <div *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" class="card rounded-box grid grow place-items-center">
-        <div class="flex gap-2">
-          <button *ngIf="connectTransport" (click)="connect(connectTransport)" class="btn">{{ connectLabel }}</button>
-        </div>
-      </div>
-      <div *ngIf="hasReached(StepsState.SelectGame)" class="font-Gen3 text-4xl">
-        Connection status: <br>
-        Ready!
-      </div>
-      <div *ngIf="webUsbError" class="font-Gen3 text-4xl">
-        Neither WebUSB nor WebSerial is supported by this browser.<br>
-        Use Chrome/Edge (WebUSB or WebSerial) or Firefox 151+ (WebSerial).
-      </div>
-    </div>
-    <img *ngIf="isCurrentlyIn(StepsState.ConnectingCelioDevice)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
-  </div>
+  <celio-connection-panel [active]="isCurrentlyIn(StepsState.ConnectingCelioDevice)"></celio-connection-panel>
 
   <div class="divider"></div>
 
@@ -55,54 +38,10 @@
     <div class="divider"></div>
   </div>
 
-  <div [class.opacity-100]="hasReached(StepsState.JoiningSession)" class="transition-opacity opacity-0 duration-500 ease-in-out">
-    <div class="box relative">
-
-      <div *ngIf="isCurrentlyIn(StepsState.JoiningSession)" class="flex w-full h-[5rem]">
-        <div class="card rounded-box grid grow place-items-center">
-          <button (click)="enterSession()" class="btn btn-lg">Create Session</button>
-        </div>
-        <div class="divider divider-horizontal"><div class="font-Gen3 text-4xl">OR</div></div>
-        <div class="card rounded-box grid grow place-items-center">
-          <input #sessionInput (keydown.enter)="enterSession(sessionInput.value)" type="text" placeholder="Enter Session Id" class="input input-lg w-3xs font-Gen3 text-2xl" />
-        </div>
-      </div>
-
-      <div *ngIf="hasReached(StepsState.WaitingForPartner)" class="flex w-full h-[5rem]">
-        <div class="font-Gen3 text-4xl">
-          Connected to Session: <br>
-          {{sessionId}}
-          <button (click)="copySessionId()" class="btn text-2xl btn-sm">Copy</button>
-        </div>
-      </div>
-      <button *ngIf=hasReached(StepsState.WaitingForPartner) (click)="leaveSession()" class="btn btn-sm text-2xl absolute bottom-3 right-2">Leave Session</button>
-      <img *ngIf="isCurrentlyIn(StepsState.JoiningSession)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
-
-    </div>
-    <div class="divider"></div>
-  </div>
-
-  <div [class.opacity-100]="hasReached(StepsState.WaitingForPartner)" class="transition-opacity opacity-0 duration-500 ease-in-out">
-    <div class="box relative">
-      <div *ngIf="isCurrentlyIn(StepsState.WaitingForPartner)" class="flex w-full h-[5rem]">
-          <p class="font-Gen3 text-4xl waiting">
-            Waiting for Partner<span class="dots"></span>
-          </p>
-      </div>
-      <div *ngIf="hasReached(StepsState.SettingLinkMode)" class="flex w-full h-[5rem]">
-        <p class="font-Gen3 text-4xl waiting">
-          Waiting for Partner... <br>
-          Partner has connected!
-        </p>
-      </div>
-      <p *ngIf="preStartInstruction && isCurrentlyIn(StepsState.WaitingForPartner)" class="font-Gen3 text-2xl mt-3" [innerHTML]="preStartInstruction"></p>
-    </div>
-    <div class="divider"></div>
-  </div>
+  <celio-session-panel [active]="hasReached(StepsState.JoiningSession)"></celio-session-panel>
 
   <div [class.opacity-100]="hasReached(StepsState.SettingLinkMode)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
-      <p *ngIf="preStartInstruction && isCurrentlyIn(StepsState.SettingLinkMode)" class="font-Gen3 text-2xl mb-3" [innerHTML]="preStartInstruction"></p>
       <div class="flex w-full h-[5rem]">
         <div class="card rounded-box grid h-20 grow place-items-center">
           <button (click)="start()" class="btn btn-lg" [disabled]="!isCurrentlyIn(StepsState.SettingLinkMode)">Start</button>
@@ -132,5 +71,3 @@
     </div>
   </div>
 </div>
-
-<app-toast></app-toast>
