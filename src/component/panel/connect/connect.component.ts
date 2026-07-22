@@ -36,8 +36,9 @@ export class CelioConnectionStatusComponent {
     return this.connectTransport() === 'serial' ? 'Connect via Serial' : 'Connect via USB';
   }
 
-  connect(kind: 'usb' | 'serial' = 'usb'): void {
-    if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
+  connect(): void {
+    const kind = this.connectTransport();
+    if (!kind) return;
 
     this.linkDeviceService.connectDevice(kind)
       .then(async isConnected => {

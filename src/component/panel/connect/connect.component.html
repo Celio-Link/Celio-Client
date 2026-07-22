@@ -2,7 +2,7 @@
   <div class="flex w-full h-[5rem]">
     <div *ngIf="active" class="card rounded-box grid grow place-items-center">
       <div class="flex gap-2">
-        <button *ngIf="connectTransport" (click)="connect()" class="btn">
+        <button *ngIf="connectTransport()" (click)="connect()" class="btn">
           {{ connectLabel() }}
         </button>
       </div>
