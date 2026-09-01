@@ -1,36 +1,67 @@
-<div class="flex min-h-screen min-w-[80em]">
-  <!-- Sidebar -->
-  <div class="w-67 bg-[#8890f8]">
+<div class="flex min-h-screen">
+  <div
+    class="fixed inset-y-0 left-0 z-50 w-67 bg-sidebar transition-transform duration-300 ease-out md:static md:translate-x-0 md:z-auto"
+    [class.-translate-x-full]="!menuOpen"
+    [class.translate-x-0]="menuOpen">
     <app-sidebar></app-sidebar>
   </div>
 
+  @if (menuOpen) {
+    <button
+      type="button"
+      class="fixed inset-0 z-40 bg-black/50 md:hidden"
+      aria-label="close sidebar"
+      (click)="closeMenu()"></button>
+  }
 
-  <!-- Main content column -->
-  <div class="flex-1 flex flex-col p-6">
+  <div class="flex-1 flex flex-col min-w-0">
+    <div class="flex items-center gap-3 px-4 py-2 bg-sidebar md:hidden">
+      <button
+        type="button"
+        class="btn btn-square btn-ghost font-Gen3 text-3xl text-white"
+        aria-label="open sidebar"
+        (click)="toggleMenu()">☰</button>
+      <span class="font-Gen3 text-2xl text-white">Celio Link</span>
+    </div>
 
-    <!-- Routed page content -->
-    <main class="flex-1">
-      <router-outlet></router-outlet>
-    </main>
+    <div class="flex-1 flex flex-col p-6">
+      <main class="flex-1">
+        <router-outlet></router-outlet>
+      </main>
 
-    <!-- Footer -->
-    <footer class="footer sm:footer-horizontal footer-center text-base-content p-4">
-      <aside>
-        <i class="text-gray-400">
-          I did it! I've managed to link up with Trainers in the Hoenn region!
-          Finally, the Network Machine is fully operational!
-          <cite class="ml-2 not-italic">— Celio</cite>
-        </i>
-        <div>
-          <div class="inline-flex items-center gap-1">
-            Made with
-            <img ngSrc="assets/heart-scale.png" width="24" height="24" alt="Heart Scale" title="Heart Scale">
-            by
-            <a href="https://x.com/essometer" target="_blank" class="text-sky-600">&#64;Essometer</a>
+      <footer class="footer sm:footer-horizontal footer-center text-base-content p-4">
+        <aside>
+          <i class="text-gray-400">
+            I did it! I've managed to link up with Trainers in the Hoenn region!
+            Finally, the Network Machine is fully operational!
+            <cite class="ml-2 not-italic">— Celio</cite>
+          </i>
+          <div>
+            <div class="inline-flex items-center gap-1">
+              Made with
+              <img ngSrc="assets/heart-scale.png" width="24" height="24" alt="Heart Scale" title="Heart Scale">
+              by
+              <a href="https://x.com/essometer" target="_blank" class="text-sky-600">&#64;Essometer</a>
+            </div>
           </div>
-        </div>
-      </aside>
-    </footer>
-
+        </aside>
+      </footer>
+    </div>
   </div>
+
+  <button
+    type="button"
+    class="fixed bottom-4 right-4 z-30 p-2 text-base-content hover:opacity-80"
+    (click)="toggleTheme()"
+    [attr.aria-label]="isDark ? 'Switch to light mode' : 'Switch to dark mode'">
+    <span class="theme-toggle-icon" [class.theme-toggle-icon--dark]="isDark">
+      <svg class="theme-toggle-icon__moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+        <path d="M21 14.5A8.5 8.5 0 1 1 9.5 3 7 7 0 0 0 21 14.5z"/>
+      </svg>
+      <svg class="theme-toggle-icon__sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+      </svg>
+    </span>
+  </button>
 </div>

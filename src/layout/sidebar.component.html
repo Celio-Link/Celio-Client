@@ -1,8 +1,8 @@
-<div class="h-screen w-67 bg-[#8890f8] flex flex-col">
-  <div class="flex-1">
-    <ul class="menu flex-col h-[33em] w-[19em]">
+<div class="h-screen w-67 bg-sidebar flex flex-col">
+  <div class="flex-1 min-h-0">
+    <ul class="menu flex-col w-[19em] h-[22em] md:h-[33em]">
       <li class="flex-1">
-        <a routerLink="/onlineLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+        <a routerLink="/onlineLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
           Online Link
         </a>
         <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
@@ -17,8 +17,8 @@
           </div>
         </span>
       </li>
-      <li class="flex-1">
-        <a routerLink="/emulatorOnlineLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+      <li class="hidden md:flex flex-1">
+        <a routerLink="/emulatorOnlineLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
           Online Emulator Link
         </a>
         <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
@@ -33,8 +33,8 @@
           </div>
         </span>
       </li>
-      <li class="flex-1">
-        <a routerLink="/emulatorLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+      <li class="hidden md:flex flex-1">
+        <a routerLink="/emulatorLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
           Local Emulator Link
         </a>
         <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
@@ -50,7 +50,7 @@
         </span>
       </li>
       <li class="flex-1">
-        <a routerLink="/tradeEmu" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+        <a routerLink="/tradeEmu" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
           Trade Simulation
         </a>
         <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
@@ -65,10 +65,9 @@
           </div>
         </span>
       </li>
-      <!-- Empty slot: keeps Advance Wars visually separated from the link modes above -->
-      <li class="flex-1 bg-[#8890f8]"></li>
+      <li class="flex-1 bg-sidebar" aria-hidden="true"></li>
       <li class="flex-1">
-        <a routerLink="/advanceWarsLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+        <a routerLink="/advanceWarsLink" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
           Advance Wars
         </a>
         <span class="absolute top-1.5 right-0.5  px-2 py-0.5 rounded-full">
@@ -89,18 +88,18 @@
   <ul class="menu flex-col w-[19em] {{ fromLauncher ? 'h-[17.25em]' : 'h-[11.5em]' }}">
     @if (fromLauncher) {
     <li class="flex-1">
-      <a [href]="launcherUrl" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]">
+      <a [href]="launcherUrl" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected">
         Return to Launcher
       </a>
     </li>
     }
     <li class="flex-1">
-      <a href="https://gblink.io/" target="_blank" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+      <a href="https://gblink.io/" target="_blank" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
         Get Hardware
       </a>
     </li>
     <li class="flex-1">
-      <a href="https://github.com/Celio-Link/Celio-Client" target="_blank" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected bg-[#FFFFFF]" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
+      <a href="https://github.com/Celio-Link/Celio-Client" target="_blank" class="box-menu w-full font-Gen3 text-2xl menu-item-unselected" routerLinkActive="menu-item" [routerLinkActiveOptions]="{ exact: true }">
         View on Github
       </a>
     </li>

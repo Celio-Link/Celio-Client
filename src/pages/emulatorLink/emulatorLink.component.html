@@ -1,11 +1,11 @@
 <div class="flex w-full flex-col">
-  <ul class="steps w-full">
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect Device</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Choose Emulator</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Load Script</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait for Server</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Start Link Mode</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 5 }">Ready</li>
+  <ul class="steps w-full steps-horizontal overflow-x-auto">
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect<span class="hidden sm:inline"> Device</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Choose<span class="hidden sm:inline"> Emulator</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Load<span class="hidden sm:inline"> Script</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait<span class="hidden sm:inline"> for Server</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Start<span class="hidden sm:inline"> Link Mode</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 5 }">Ready</li>
   </ul>
 
   <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
@@ -18,14 +18,14 @@
   <div [class.opacity-100]="hasReached(StepsState.ChooseEmulator)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
 
-      <div *ngIf="isCurrentlyIn(StepsState.ChooseEmulator)" class="flex w-full h-[5rem]">
-        <div class="font-Gen3 text-4xl">
+      <div *ngIf="isCurrentlyIn(StepsState.ChooseEmulator)" class="flex flex-col gap-3 w-full min-h-[5rem] pb-8">
+        <div class="font-Gen3 text-4xl pr-8">
           Select Emulator (currently only mGBA is supported):
         </div>
-        <button (click)="emulatorSelected(SupportedEmulators.mGBA)" class="btn btn-sm text-2xl absolute bottom-3 left-2">mGBA</button>
+        <button (click)="emulatorSelected(SupportedEmulators.mGBA)" class="btn btn-sm text-2xl w-fit">mGBA</button>
       </div>
 
-      <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex w-full h-[5rem]">
+      <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex w-full min-h-[5rem]">
         <div *ngIf="hasReached(StepsState.ChooseEmulator)" class="font-Gen3 text-4xl">
           Selected emulator: <br>
           mGBA
@@ -42,13 +42,15 @@
   <div [class.opacity-100]="hasReached(StepsState.DownloadPlugin)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
 
-      <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex w-full h-[5rem]">
-        <div class="font-Gen3 text-4xl">
-          Load via Tools → Scripting... → File → Load script...<br>
-          <button onclick="window.open('https://github.com/Exormeter/mGBA_celio_edition/releases/tag/2.0.0', '_blank')" class="btn btn-sm text-2xl absolute bottom-3 left-2">
+      <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex flex-col gap-3 w-full min-h-[5rem] pb-8">
+        <div class="font-Gen3 text-4xl pr-8">
+          Load via Tools → Scripting... → File → Load script...
+        </div>
+        <div class="flex flex-wrap gap-2 items-center">
+          <button onclick="window.open('https://github.com/Exormeter/mGBA_celio_edition/releases/tag/2.0.0', '_blank')" class="btn btn-sm text-2xl">
             Download script
           </button>
-          <button *ngIf=isCurrentlyIn(StepsState.DownloadPlugin) (click)="startWaitForServer()" class="btn btn-sm text-2xl absolute bottom-3 right-10">Next Step</button>
+          <button *ngIf=isCurrentlyIn(StepsState.DownloadPlugin) (click)="startWaitForServer()" class="btn btn-sm text-2xl">Next Step</button>
         </div>
       </div>
 
@@ -62,12 +64,12 @@
 
   <div [class.opacity-100]="hasReached(StepsState.WaitForLocalServer)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
-      <div *ngIf="isCurrentlyIn(StepsState.WaitForLocalServer)" class="flex w-full h-[5rem]">
+      <div *ngIf="isCurrentlyIn(StepsState.WaitForLocalServer)" class="flex w-full min-h-[5rem]">
         <p class="font-Gen3 text-4xl waiting">
           Waiting for Server to start<span class="dots"></span>
         </p>
       </div>
-      <div *ngIf="hasReached(StepsState.SettingLinkMode)" class="flex w-full h-[5rem]">
+      <div *ngIf="hasReached(StepsState.SettingLinkMode)" class="flex w-full min-h-[5rem]">
         <p class="font-Gen3 text-4xl waiting">
           Server status: <br>
           Connected!
@@ -95,17 +97,17 @@
   <div *ngIf="hasReached(StepsState.Ready)"
        class="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center transition-opacity duration-500 ease-in-out">
 
-    <div class="card rounded-box bg-white min-w-[75em] h-auto max-w-screen-xl mx-auto flex flex-col items-center justify-between p-8 relative">
+    <div class="card rounded-box bg-base-100 w-full max-w-screen-xl mx-auto flex flex-col items-center justify-between p-4 sm:p-8 relative">
 
 
-      <div class="flex justify-between items-center w-full relative">
-        <img src="assets/PC.png" class="image-pixelated h-48 w-auto relative ml-[8rem] bottom-1"/>
+      <div class="flex justify-between items-center w-full relative gap-2">
+        <img src="assets/PC.png" class="image-pixelated h-24 sm:h-48 w-auto relative ml-0 lg:ml-[8rem] bottom-1"/>
         <div class="bg-black h-2 w-[100%] relative"></div>
         <button (click)="disconnect()" class="btn btn-lg btn-dash btn-error mt-8 relative bottom-4">
           Disconnect
         </button>
         <div class="bg-black h-2 w-[100%] relative -mr-[12px]"></div>
-        <img src="assets/GBA.png" class="image-pixelated h-48 w-auto relative mr-[8rem]"/>
+        <img src="assets/GBA.png" class="image-pixelated h-24 sm:h-48 w-auto relative mr-0 lg:mr-[8rem]"/>
       </div>
 
       <div class="box mt-12 font-Gen3 text-4xl">

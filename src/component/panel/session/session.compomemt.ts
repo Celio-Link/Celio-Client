@@ -30,6 +30,7 @@ export class CelioSessionComponent {
   private linkSessionCloseSubscription: Subscription
 
   protected sessionId: string | undefined = "";
+  protected joinSessionId = "";
   protected state: SessionState = SessionState.Start;
 
   @Input() active = false;
@@ -69,13 +70,27 @@ export class CelioSessionComponent {
   private updateSessionState(state: SessionState) {
     if (this.state == state) return;
     this.state = state;
+    if (state === SessionState.Start) {
+      this.joinSessionId = "";
+    }
     this.sessionStateChange.emit(state);
+  }
+
+  onJoinSessionIdInput(event: Event) {
+    this.joinSessionId = (event.target as HTMLInputElement).value;
+  }
+
+  joinSession() {
+    const id = this.joinSessionId.trim();
+    if (!id) return;
+    this.enterSession(id);
   }
 
   async enterSession(userSessionId?: string) {
     if (!await this.socket.connect()) {
       this.toastService.show("Could not connect to Server", 'error', 4000)
       console.error("Could not connect to Server");
+      return;
     }
     this.playerSessionService.enterSession(userSessionId).then(session => {
       this.createSessionEvent.emit();
