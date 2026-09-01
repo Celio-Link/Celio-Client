@@ -1,10 +1,10 @@
 <div class="flex w-full flex-col">
-  <ul class="steps w-full">
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect Celio Device</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Join Session</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Wait for Partner</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Start Link Mode</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Ready</li>
+  <ul class="steps w-full overflow-x-auto">
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect<span class="hidden sm:inline"> Celio Device</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Join<span class="hidden sm:inline"> Session</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Wait<span class="hidden sm:inline"> for Partner</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Start<span class="hidden sm:inline"> Link Mode</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Ready</li>
   </ul>
 
   <div class="divider"></div>
@@ -29,17 +29,17 @@
   <div *ngIf="hasReached(StepsState.Ready)"
        class="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center transition-opacity duration-500 ease-in-out">
 
-    <div class="card rounded-box bg-white min-w-[75em] h-auto max-w-screen-xl mx-auto flex flex-col items-center justify-between p-8 relative">
+    <div class="card rounded-box bg-base-100 w-full max-w-screen-xl mx-auto flex flex-col items-center justify-between p-4 sm:p-8 relative">
 
 
-      <div class="flex justify-between items-center w-full relative">
-        <img src="assets/PC.png" class="image-pixelated h-48 w-auto relative ml-[8rem] bottom-1"/>
+      <div class="flex justify-between items-center w-full relative gap-2">
+        <img src="assets/PC.png" class="image-pixelated h-24 sm:h-48 w-auto relative ml-0 lg:ml-[8rem] bottom-1"/>
         <div class="bg-black h-2 w-[100%] relative"></div>
         <button (click)="disconnectCelioDevice()" class="btn btn-lg btn-dash btn-error mt-8 relative bottom-4">
           Disconnect
         </button>
         <div class="bg-black h-2 w-[100%] relative -mr-[12px]"></div>
-        <img src="assets/GBA.png" class="image-pixelated h-48 w-auto relative mr-[8rem]"/>
+        <img src="assets/GBA.png" class="image-pixelated h-24 sm:h-48 w-auto relative mr-0 lg:mr-[8rem]"/>
       </div>
 
       <div class="box mt-12 font-Gen3 text-4xl">

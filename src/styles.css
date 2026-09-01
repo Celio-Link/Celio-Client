@@ -1,7 +1,7 @@
 @import "tailwindcss"; /* You can add global styles to this file, and also import other style files */
 @tailwind utilities;
 @plugin "daisyui"{
-  themes: light --default, dark --prefersdark, emerald;
+  themes: light --default, dark --prefersdark, emerald, emerald-dark;
 }
 
 @plugin "daisyui/theme" {
@@ -39,6 +39,41 @@
   --noise: 0;
 }
 
+@plugin "daisyui/theme" {
+  name: "emerald-dark";
+  default: false;
+  prefersdark: false;
+  color-scheme: "dark";
+  --color-base-100: oklch(22% 0.02 264);
+  --color-base-200: oklch(18% 0.02 264);
+  --color-base-300: oklch(28% 0.03 264);
+  --color-base-content: oklch(92% 0.01 264);
+  --color-primary: #00ff9c;
+  --color-primary-content: oklch(20% 0.04 162);
+  --color-secondary: #6b73d6;
+  --color-secondary-content: oklch(100% 0 0);
+  --color-accent: oklch(72.772% 0.149 33.2);
+  --color-accent-content: oklch(0% 0 0);
+  --color-neutral: oklch(28% 0.03 264);
+  --color-neutral-content: oklch(92% 0.01 264);
+  --color-info: oklch(72.06% 0.191 231.6);
+  --color-info-content: oklch(0% 0 0);
+  --color-success: oklch(64.8% 0.15 160);
+  --color-success-content: oklch(0% 0 0);
+  --color-warning: oklch(84.71% 0.199 83.87);
+  --color-warning-content: oklch(0% 0 0);
+  --color-error: oklch(71.76% 0.221 22.18);
+  --color-error-content: oklch(0% 0 0);
+  --radius-selector: 1rem;
+  --radius-field: 0.5rem;
+  --radius-box: 1rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
 @font-face {
   font-family: 'Gen3';
   src: url('assets/fonts/pokemon-emerald.ttf') format('truetype');
@@ -55,6 +90,54 @@
   font-weight: 100;
   font-family: 'Gen3', serif;
   @apply text-3xl;
+}
+
+.btn:not(
+  .btn-primary,
+  .btn-secondary,
+  .btn-accent,
+  .btn-neutral,
+  .btn-info,
+  .btn-success,
+  .btn-warning,
+  .btn-error,
+  .btn-ghost,
+  .btn-link,
+  .btn-outline,
+  .btn-dash
+) {
+  color-scheme: light;
+  --btn-color: #e8e8e8;
+  --btn-bg: #e8e8e8;
+  --btn-fg: #333c4d;
+  --btn-border: #cfcfcf;
+  --btn-shadow: none;
+  --color-base-200: #e8e8e8;
+  --color-base-content: #333c4d;
+  background-color: #e8e8e8 !important;
+  color: #333c4d !important;
+  border-color: #cfcfcf !important;
+  box-shadow: none !important;
+  text-shadow: none;
+}
+
+.btn:not(
+  .btn-primary,
+  .btn-secondary,
+  .btn-accent,
+  .btn-neutral,
+  .btn-info,
+  .btn-success,
+  .btn-warning,
+  .btn-error,
+  .btn-ghost,
+  .btn-link,
+  .btn-outline,
+  .btn-dash
+):hover {
+  --btn-bg: #dcdcdc;
+  background-color: #dcdcdc !important;
+  border-color: #c4c4c4 !important;
 }
 
 @utility step-warning {
@@ -86,6 +169,25 @@
 
   /* content spacing */
   padding: 10px;
+  color: oklch(35.519% 0.032 262.988);
+}
+
+[data-theme="emerald-dark"] .box {
+  border-image-source: url("assets/border/textbox-dark.png");
+  background: transparent;
+  color: oklch(92% 0.01 264);
+}
+
+:root {
+  --sidebar-bg: #8890f8;
+}
+
+[data-theme="emerald-dark"] {
+  --sidebar-bg: #252836;
+}
+
+.bg-sidebar {
+  background-color: var(--sidebar-bg);
 }
 
 .box-menu {
@@ -107,6 +209,14 @@
 
   /* content spacing */
   padding: 10px;
+  color: oklch(35.519% 0.032 262.988);
+  background-color: transparent;
+}
+
+.menu li > .box-menu:hover,
+.menu li > .box-menu:focus,
+.menu li > .box-menu:active {
+  background-color: transparent;
 }
 
 .menu-item-unselected::before {
@@ -168,4 +278,35 @@
 
 .animate-bob {
   animation: bob 0.5s steps(1) infinite alternate;
+}
+
+.theme-toggle-icon {
+  display: inline-grid;
+  place-items: center;
+  color: currentColor;
+}
+
+.theme-toggle-icon > svg {
+  grid-area: 1 / 1;
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.theme-toggle-icon__moon {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
+}
+
+.theme-toggle-icon__sun {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.5);
+}
+
+.theme-toggle-icon--dark .theme-toggle-icon__moon {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.5);
+}
+
+.theme-toggle-icon--dark .theme-toggle-icon__sun {
+  opacity: 1;
+  transform: rotate(0deg) scale(1);
 }

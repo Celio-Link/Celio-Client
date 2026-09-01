@@ -1,9 +1,10 @@
 <div class="box relative">
-  <div class="flex w-full h-[5rem]">
+  <div class="flex w-full min-h-[5rem] h-auto py-2">
     <div *ngIf="active" class="card rounded-box grid grow place-items-center">
       <div class="flex gap-2">
         <button *ngIf="connectTransport()" (click)="connect()" class="btn">
-          {{ connectLabel() }}
+          <span class="sm:hidden">Connect</span>
+          <span class="hidden sm:inline">{{ connectLabel() }}</span>
         </button>
       </div>
     </div>

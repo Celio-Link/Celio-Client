@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
-import {NgOptimizedImage} from '@angular/common';
 
 // Whether this client was opened from the GB Link launcher (?from=gblink-launcher).
 // Captured at module load — before Angular's router runs its initial navigation,

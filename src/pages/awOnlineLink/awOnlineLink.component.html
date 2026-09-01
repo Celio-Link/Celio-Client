@@ -1,11 +1,11 @@
 <div class="flex w-full flex-col">
-  <ul class="steps w-full">
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect Device</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Select Game</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Join Session</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait for Partner</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Start Link Mode</li>
-    <li class="step font-Gen3 text-2xl" [ngClass]="{ 'step-primary': stepState >= 5 }">Ready</li>
+  <ul class="steps w-full steps-horizontal overflow-x-auto">
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect<span class="hidden sm:inline"> Device</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Select<span class="hidden sm:inline"> Game</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Join<span class="hidden sm:inline"> Session</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait<span class="hidden sm:inline"> for Partner</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Start<span class="hidden sm:inline"> Link Mode</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 5 }">Ready</li>
   </ul>
 
   <div class="divider"></div>
@@ -16,16 +16,16 @@
 
   <div [class.opacity-100]="hasReached(StepsState.SelectGame)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
-      <div *ngIf="isCurrentlyIn(StepsState.SelectGame)" class="flex w-full h-[5rem]">
-        <div class="card rounded-box grid grow place-items-center">
+      <div *ngIf="isCurrentlyIn(StepsState.SelectGame)" class="flex flex-col sm:flex-row w-full min-h-[5rem] gap-2 sm:gap-0">
+        <div class="card rounded-box grid grow place-items-center py-2">
           <button (click)="selectAwVariant(1)" class="btn">Advance Wars</button>
         </div>
-        <div class="divider divider-horizontal"><div class="font-Gen3 text-4xl">OR</div></div>
-        <div class="card rounded-box grid grow place-items-center">
+        <div class="divider sm:divider-horizontal"><div class="font-Gen3 text-4xl">OR</div></div>
+        <div class="card rounded-box grid grow place-items-center py-2">
           <button (click)="selectAwVariant(2)" class="btn">Advance Wars 2</button>
         </div>
       </div>
-      <div *ngIf="hasReached(StepsState.JoiningSession)">
+      <div *ngIf="hasReached(StepsState.JoiningSession)" class="pb-10 sm:pb-0">
         <button (click)="resetAwVariant()" class="btn btn-sm text-2xl absolute bottom-3 right-2">
           Change Game
         </button>
@@ -54,17 +54,17 @@
   <div *ngIf="hasReached(StepsState.Ready)"
        class="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center transition-opacity duration-500 ease-in-out">
 
-    <div class="card rounded-box bg-white min-w-[75em] h-auto max-w-screen-xl mx-auto flex flex-col items-center justify-between p-8 relative">
+    <div class="card rounded-box bg-base-100 w-full max-w-screen-xl mx-auto flex flex-col items-center justify-between p-4 sm:p-8 relative">
 
 
-      <div class="flex justify-between items-center w-full relative">
-        <img src="assets/PC.png" class="image-pixelated h-48 w-auto relative ml-[8rem] bottom-1"/>
+      <div class="flex justify-between items-center w-full relative gap-2">
+        <img src="assets/PC.png" class="image-pixelated h-24 sm:h-48 w-auto relative ml-0 lg:ml-[8rem] bottom-1"/>
         <div class="bg-black h-2 w-[100%] relative"></div>
         <button (click)="disconnectCelioDevice()" class="btn btn-lg btn-dash btn-error mt-8 relative bottom-4">
           Disconnect
         </button>
         <div class="bg-black h-2 w-[100%] relative -mr-[12px]"></div>
-        <img src="assets/GBA.png" class="image-pixelated h-48 w-auto relative mr-[8rem]"/>
+        <img src="assets/GBA.png" class="image-pixelated h-24 sm:h-48 w-auto relative mr-0 lg:mr-[8rem]"/>
       </div>
 
       <div class="box mt-12 font-Gen3 text-4xl" [innerHTML]="readyInstruction"></div>
