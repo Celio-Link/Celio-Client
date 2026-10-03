@@ -38,9 +38,11 @@ export class CommandEmitterSocketIO extends CommandEmitterAbstract {
 
     this.subscriptions.add(
       this.websocketService
-        .fromEvent<CommandPacket>('deviceCommand')
-        .subscribe((commandPacket: CommandPacket) => {
-          this.commandSubject.next(commandPacket);
+        .fromEventWithAck<CommandPacket>('deviceCommand')
+        .subscribe(({data, ack}) => {
+          // Duplicates from retries are filtered by uuid in the LinkExchangeSession
+          ack(true);
+          this.commandSubject.next(data);
         })
     );
 
