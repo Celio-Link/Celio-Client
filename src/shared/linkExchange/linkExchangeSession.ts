@@ -51,16 +51,26 @@ export class LinkExchangeSession {
 
   handleSocketDataToDevice(packet: DataPacket) {
     console.log("%c Incoming: " + packet.toString(), 'color: #00cc66');
-    if (this.expectedPacketSequence > packet.sequence) {
+    if (packet.sequence < this.expectedPacketSequence || this.bufferedPackets.has(packet.sequence)) {
       console.warn("Received data packet has already been received, discarding...");
       return;
     }
-    else if (this.expectedPacketSequence < packet.sequence) {
-      console.warn("Received data out of order, saved to queue " + JSON.stringify(packet));
-      return this.handleOutOfOrderPaket(packet)
+    if (packet.sequence > this.expectedPacketSequence) {
+      console.warn("Received data out of order, saved to buffer " + JSON.stringify(packet));
     }
 
-    this.deviceQueue.push(packet.data);
+    this.bufferedPackets.set(packet.sequence, packet.data);
+    let nextPacket = this.bufferedPackets.get(this.expectedPacketSequence);
+    while (nextPacket) {
+      this.bufferedPackets.delete(this.expectedPacketSequence);
+      this.expectedPacketSequence++;
+      this.sendDataToDevice(nextPacket);
+      nextPacket = this.bufferedPackets.get(this.expectedPacketSequence);
+    }
+  }
+
+  private sendDataToDevice(data: DataArray) {
+    this.deviceQueue.push(data);
 
     const queued = this.deviceQueue.shift();
     if (this.deviceQueue.length > 10){
@@ -74,21 +84,6 @@ export class LinkExchangeSession {
           this.deviceQueue.unshift(queued);
         }
       );
-    }
-
-    this.expectedPacketSequence++;
-  }
-
-  handleOutOfOrderPaket(packet: DataPacket) {
-    this.bufferedPackets.set(packet.sequence, packet.data);
-    console.warn(this.expectedPacketSequence);
-    let nextPacket = this.bufferedPackets.get(this.expectedPacketSequence);
-    while (nextPacket) {
-      console.warn("Putting buffered packet into device queue: " + JSON.stringify(nextPacket));
-      this.deviceQueue.push(nextPacket);
-      this.bufferedPackets.delete(this.expectedPacketSequence);
-      this.expectedPacketSequence++;
-      nextPacket = this.bufferedPackets.get(this.expectedPacketSequence);
     }
   }
 

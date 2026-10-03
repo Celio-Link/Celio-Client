@@ -3,19 +3,16 @@ import {CommandEmitterAbstract} from './commandEmitter.abstract'
 import {concatMap, Subject, Subscription} from 'rxjs';
 import {WebSocketService} from '../../../services/websocket.service';
 
-const MAX_DATA_BATCH_SIZE = 1024;
+const MAX_UNACKED_DATA: number = 64;
 
 export class CommandEmitterSocketIO extends CommandEmitterAbstract {
 
   private subscriptions = new Subscription();
 
-  // Status packets are sent one by one and right away
   private status$ = new Subject<StatusPacket>();
 
-  // Data packets are sent in batches with only one batch in flight. Packets queued while a batch is in flight
-  // are sent together as the next batch once the previous one is done.
   private dataQueue: DataPacket[] = [];
-  private dataInFlight: boolean = false;
+  private dataInFlight: number = 0;
   private destroyed: boolean = false;
 
   constructor(protected websocketService: WebSocketService) {
@@ -68,14 +65,14 @@ export class CommandEmitterSocketIO extends CommandEmitterAbstract {
   }
 
   private sendQueuedData() {
-    if (this.destroyed || this.dataInFlight || this.dataQueue.length === 0) return;
-
-    const batch = this.dataQueue.splice(0, MAX_DATA_BATCH_SIZE);
-    this.dataInFlight = true;
-    this.emitWithRetry('deviceData', batch).finally(() => {
-      this.dataInFlight = false;
-      this.sendQueuedData();
-    });
+    while (!this.destroyed && this.dataInFlight < MAX_UNACKED_DATA && this.dataQueue.length > 0) {
+      const packet = this.dataQueue.shift()!;
+      this.dataInFlight++;
+      this.emitWithRetry('deviceData', [packet]).finally(() => {
+        this.dataInFlight--;
+        this.sendQueuedData();
+      });
+    }
   }
 
   private emitWithRetry(event: string, data: DataPacket[] | StatusPacket): Promise<void> {

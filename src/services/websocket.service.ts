@@ -10,10 +10,11 @@ export class WebSocketService {
   protected socket: Socket = io(environment.apiUrl, {
     transports: ["websocket"],
     autoConnect: false,
-    reconnectionAttempts: 4,
+    // Keep trying about as long as the server keeps the session after a disconnect (~7.5s)
+    reconnectionAttempts: 10,
     reconnectionDelay: 100,
     reconnectionDelayMax: 1000,
-    timeout: 5000
+    timeout: 2000
   });
 
   private clientId: string = uuidv4()
