@@ -24,7 +24,7 @@ test("Exchange Data with Disconnect", {timeout: 10000}, () => new Promise<void>(
   const celioDeviceA = new CelioDeviceMock((received: DataArray, history: DataArray) => {
     expect(received).toEqual(history)
     numberOfExchangesA++;
-    if (numberOfExchangesA == successfulExchanges && numberOfExchangesB == successfulExchanges) {
+    if (numberOfExchangesA >= successfulExchanges && numberOfExchangesB >= successfulExchanges) {
       done();
     }
   },200, 50)
@@ -32,7 +32,7 @@ test("Exchange Data with Disconnect", {timeout: 10000}, () => new Promise<void>(
   const celioDeviceB = new CelioDeviceMock((received: DataArray, history: DataArray) => {
     expect(received).toEqual(history)
     numberOfExchangesB++;
-    if (numberOfExchangesA == successfulExchanges && numberOfExchangesB == successfulExchanges) {
+    if (numberOfExchangesA >= successfulExchanges && numberOfExchangesB >= successfulExchanges) {
       done();
     }
   }, 200, 50)
