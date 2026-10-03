@@ -4,31 +4,20 @@ import { WebSocketService } from "../src/services/websocket.service.js";
 import { LinkExchangeSession } from '../src/shared/linkExchange/linkExchangeSession';
 import { LinkDeviceServiceMock, DataArray } from "./mocks/service/linkdevice.service.mock";
 import {CelioDeviceMock} from './mocks/celioDeviceMock';
-import {DataPacket} from '../src/shared/linkExchange/commandEmitter/commandEmitter.abstract';
+import {DataPacket} from '../src/shared/linkExchange/common';
 import {CommandEmitterSocketIO} from '../src/shared/linkExchange/commandEmitter/commandEmitter.socketIO';
+import {StatusEmitterLinkDevice} from '../src/shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
 
 class LinkDeviceExchangeMockWrongSequence extends LinkExchangeSession {
 
   private packetBuffer: DataPacket[] = []
 
   override handleDeviceDataToSocket(data: DataArray) {
-    if (this.transmittedPacketCounter < 0) return;
-    const queued = this.deviceQueue.shift();
-    console.log("Device queue status: " + JSON.stringify(this.deviceQueue));
-    if (queued) {
-      this.linkDeviceService.sendData(queued).then(
-        () => console.log("Transmit data to device: ", queued),
-        () => {
-          console.log("Transmit data to device: ERROR, Unshift data to queue...");
-          this.deviceQueue.unshift(queued);
-        }
-      );
-    }
-
-    let packet: DataPacket = new DataPacket(this.transmittedPacketCounter, data);
+    let packet: DataPacket = new DataPacket(this.transmittedPacketCounter, data as any);
 
     this.transmittedPacketCounter++;
 
+    // Hold back the first packets, then send with a delay of three to shuffle the order
     if (this.transmittedPacketCounter <= 3) {
       this.packetBuffer.push(packet);
       return
@@ -62,17 +51,17 @@ test("Exchange Data in wrong sequence", {timeout: 10000}, () => new Promise<void
   const websocketServiceA = new WebSocketService();
   const playerSessionServiceA = new PlayerSessionService(websocketServiceA);
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, LoopBackDataGeneratorB);
-  const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockWrongSequence(new CommandEmitterSocketIO(websocketServiceA), linkDeviceServiceMockA as any);
-  websocketServiceA.connect();
-  let sessionInfo = await playerSessionServiceA.createSession()
+  const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockWrongSequence(new CommandEmitterSocketIO(websocketServiceA), new StatusEmitterLinkDevice(linkDeviceServiceMockA as any));
+  await websocketServiceA.connect();
+  let sessionInfo = await playerSessionServiceA.enterSession()
   expect(sessionInfo.full).toEqual(false);
 
   const websocketServiceB = new WebSocketService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
   const linkDeviceServiceMockB = new LinkDeviceServiceMock(LoopBackDataGeneratorB, celioDeviceA);
-  const linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), linkDeviceServiceMockB as any);
-  websocketServiceB.connect();
-  sessionInfo = await playerSessionServiceB.joinSession(sessionInfo.id)
+  const linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), new StatusEmitterLinkDevice(linkDeviceServiceMockB as any));
+  await websocketServiceB.connect();
+  sessionInfo = await playerSessionServiceB.enterSession(sessionInfo.id)
   expect(sessionInfo.full).toEqual(true);
 
   await linkDeviceServiceMockA.connectDevice()

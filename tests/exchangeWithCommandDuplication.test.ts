@@ -3,11 +3,12 @@ import {CommandType, DataArray, LinkDeviceServiceMock} from './mocks/service/lin
 import {WebSocketService} from '../src/services/websocket.service';
 import {PlayerSessionService} from '../src/services/playersession.service';
 import { LinkExchangeSession } from '../src/shared/linkExchange/linkExchangeSession';
-import {LinkStatus} from '../src/services/linkdevice.service';
+import {LinkStatus} from '../src/shared/linkExchange/common';
 import {v4 as uuidv4} from 'uuid';
 import {CelioDeviceMock} from './mocks/celioDeviceMock';
 import {CommandEmitterSocketIO} from '../src/shared/linkExchange/commandEmitter/commandEmitter.socketIO';
-import {StatusPacket} from '../src/shared/linkExchange/commandEmitter/commandEmitter.abstract';
+import {StatusEmitterLinkDevice} from '../src/shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
+import {StatusPacket} from '../src/shared/linkExchange/common';
 
 export class LinkDeviceExchangeMockStatusDuplication extends LinkExchangeSession {
   override handleDeviceStatusToSocket(status: LinkStatus) {
@@ -51,9 +52,9 @@ test("Exchange Data with repeated command packets", () => new Promise<void>(asyn
   }
 
   // Mock sends out packets twice instead of once
-  const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockStatusDuplication(new CommandEmitterSocketIO(websocketServiceA), linkDeviceServiceMockA as any);
-  websocketServiceA.connect();
-  let sessionInfo = await playerSessionServiceA.createSession()
+  const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockStatusDuplication(new CommandEmitterSocketIO(websocketServiceA), new StatusEmitterLinkDevice(linkDeviceServiceMockA as any));
+  await websocketServiceA.connect();
+  let sessionInfo = await playerSessionServiceA.enterSession()
   expect(sessionInfo.full).toEqual(false);
 
   const websocketServiceB = new WebSocketService();
@@ -65,9 +66,9 @@ test("Exchange Data with repeated command packets", () => new Promise<void>(asyn
     expect(celioDeviceB.commands.slice(1)).toEqual([CommandType.StartHandshake, CommandType.ConnectLink])
   }
 
-  const linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), linkDeviceServiceMockB as any);
-  websocketServiceB.connect();
-  sessionInfo = await playerSessionServiceB.joinSession(sessionInfo.id)
+  const linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), new StatusEmitterLinkDevice(linkDeviceServiceMockB as any));
+  await websocketServiceB.connect();
+  sessionInfo = await playerSessionServiceB.enterSession(sessionInfo.id)
   expect(sessionInfo.full).toEqual(true);
 
 

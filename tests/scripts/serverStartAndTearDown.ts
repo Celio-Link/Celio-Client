@@ -18,23 +18,40 @@ beforeAll(() => {
 });
 
 // --- Start server ---
+// Spawn node directly (not via "npm run start"), otherwise kill() only stops npm and the server keeps the port
 async function startServer() {
-  externalProcess = spawn("npm", ["run", "start"], {
+  const serverProcess = spawn("node", ["dist"], {
     cwd: externalDir,
-    stdio: "inherit",
+    stdio: ["ignore", "pipe", "inherit"],
   });
+  externalProcess = serverProcess;
 
   // Wait for server to be ready
-  await new Promise((res) => setTimeout(res, 800));
+  await new Promise<void>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Server did not start in time")), 5000);
+    serverProcess.stdout!.on("data", (chunk: Buffer) => {
+      process.stdout.write(chunk);
+      if (chunk.toString().includes("Server listening")) {
+        clearTimeout(timer);
+        resolve();
+      }
+    });
+    serverProcess.once("exit", code => {
+      clearTimeout(timer);
+      reject(new Error("Server exited during startup with code " + code));
+    });
+  });
 }
 
 // --- Stop server ---
 async function stopServer() {
-  if (externalProcess) {
+  const serverProcess = externalProcess;
+  externalProcess = null;
+  if (serverProcess && serverProcess.exitCode === null) {
     console.warn("Stopping server...")
-    externalProcess.kill();
-    externalProcess = null;
-    await new Promise((res) => setTimeout(res, 800));
+    const exited = new Promise(res => serverProcess.once("exit", res));
+    serverProcess.kill();
+    await exited;
   }
 }
 
@@ -49,6 +66,6 @@ afterEach(async () => {
 });
 
 // Final global cleanup (optional)
-afterAll(() => {
-  stopServer();
+afterAll(async () => {
+  await stopServer();
 });
