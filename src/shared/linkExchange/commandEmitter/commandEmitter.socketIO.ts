@@ -1,15 +1,37 @@
 import {CommandPacket, DataPacket, StatusPacket} from '../common'
 import {CommandEmitterAbstract} from './commandEmitter.abstract'
-import {Subscription} from 'rxjs';
+import {concatMap, Subject, Subscription} from 'rxjs';
 import {WebSocketService} from '../../../services/websocket.service';
+
+interface OutgoingAckablePacket {
+  event: string;
+  data: DataPacket | StatusPacket;
+}
 
 export class CommandEmitterSocketIO extends CommandEmitterAbstract {
 
   private subscriptions = new Subscription();
 
+  // Data and status packets share one queue to keep the order in which the device emitted them
+  private send$ = new Subject<OutgoingAckablePacket>();
+
   constructor(protected websocketService: WebSocketService) {
 
     super();
+    this.subscriptions.add(
+      this.send$.pipe(
+        concatMap((packet: OutgoingAckablePacket) =>
+          this.websocketService.emitWithRetry(packet.event, packet.data)
+            .then(
+              (acked) => {
+                if (acked !== true) console.warn("Server rejected " + packet.event + ": " + JSON.stringify(packet.data));
+              },
+              (err) => console.error("Ack for " + packet.event + " failed after retries:", err)
+            )
+        )
+      ).subscribe()
+    );
+
     this.subscriptions.add(
       this.websocketService
         .fromEventWithAck<DataPacket>('deviceData')
@@ -40,11 +62,11 @@ export class CommandEmitterSocketIO extends CommandEmitterAbstract {
   }
 
   receiveData(data: DataPacket) : void {
-    this.websocketService.emit('deviceData', data);
+    this.send$.next({event: 'deviceData', data: data});
   }
 
   receiveStatus(status: StatusPacket) : void {
-    this.websocketService.emit('deviceStatus', status);
+    this.send$.next({event: 'deviceStatus', data: status});
   }
 
   destroy() {

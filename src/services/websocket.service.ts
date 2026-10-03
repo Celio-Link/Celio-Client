@@ -55,6 +55,46 @@ export class WebSocketService {
     this.socket.emit(event, ...args);
   }
 
+  /**
+   * Emit an event to the server with retry logic. Resolves with the ack value of the server.
+   * Emits while disconnected are buffered by socket.io and retried after a timeout, so the server
+   * must handle duplicates.
+   * @param event
+   * @param data
+   * @param retries
+   * @param timeout
+   * @param backoff
+   */
+  emitWithRetry(event: string, data?: any, {
+    retries = 5,
+    timeout = 1000,
+    backoff = 100  // ms added per retry
+  } = {}): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      let attempt = 0;
+
+      const tryEmit = () => {
+        attempt++;
+
+        this.socket.timeout(timeout).emit(event, data, (err: Error | null, ackValue: unknown) => {
+          if (!err) {
+            resolve(ackValue);
+            return;
+          }
+
+          if (attempt > retries) {
+            reject(new Error("Max retries reached"));
+            return;
+          }
+
+          setTimeout(tryEmit, backoff * attempt);
+        });
+      };
+
+      tryEmit();
+    });
+  }
+
    async connect() {
      if (this.socket.connected) { return true; }
 
