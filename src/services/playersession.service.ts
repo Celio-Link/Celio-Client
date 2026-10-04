@@ -47,6 +47,7 @@ export class PlayerSessionService {
   }
 
   private subscriptions = new Subscription();
+  private receivedEvents = new Set<string>();
 
   constructor( private websocketService: WebSocketService ) {
     Object.entries(this.socketEventHandlers).forEach(([event, handler]) => {

@@ -41,9 +41,9 @@ export class WebSocketService {
    */
   fromEventWithAck<T>(event: string): Observable<{ data: T, ack: Function }> {
     return new Observable<{ data: T, ack: Function }>((observer) => {
-      this.socket.on(event, (data: T, ack: Function) => {
-        observer.next({ data, ack });
-      });
+      const handler = (data: T, ack: Function) => observer.next({ data, ack });
+      this.socket.on(event, handler);
+      return () => { this.socket.off(event, handler); };
     });
   }
 
