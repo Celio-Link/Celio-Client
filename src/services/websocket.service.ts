@@ -10,10 +10,11 @@ export class WebSocketService {
   protected socket: Socket = io(environment.apiUrl, {
     transports: ["websocket"],
     autoConnect: false,
-    reconnectionAttempts: 4,
+    // Keep trying about as long as the server keeps the session after a disconnect (~7.5s)
+    reconnectionAttempts: 10,
     reconnectionDelay: 100,
     reconnectionDelayMax: 1000,
-    timeout: 5000
+    timeout: 2000
   });
 
   private clientId: string = uuidv4()
@@ -40,9 +41,9 @@ export class WebSocketService {
    */
   fromEventWithAck<T>(event: string): Observable<{ data: T, ack: Function }> {
     return new Observable<{ data: T, ack: Function }>((observer) => {
-      this.socket.on(event, (data: T, ack: Function) => {
-        observer.next({ data, ack });
-      });
+      const handler = (data: T, ack: Function) => observer.next({ data, ack });
+      this.socket.on(event, handler);
+      return () => { this.socket.off(event, handler); };
     });
   }
 
@@ -53,6 +54,46 @@ export class WebSocketService {
    */
   emit(event: string, ...args: any[]) {
     this.socket.emit(event, ...args);
+  }
+
+  /**
+   * Emit an event to the server with retry logic. Resolves with the ack value of the server.
+   * Emits while disconnected are buffered by socket.io and retried after a timeout, so the server
+   * must handle duplicates.
+   * @param event
+   * @param data
+   * @param retries
+   * @param timeout
+   * @param backoff
+   */
+  emitWithRetry(event: string, data?: any, {
+    retries = 5,
+    timeout = 1000,
+    backoff = 100  // ms added per retry
+  } = {}): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      let attempt = 0;
+
+      const tryEmit = () => {
+        attempt++;
+
+        this.socket.timeout(timeout).emit(event, data, (err: Error | null, ackValue: unknown) => {
+          if (!err) {
+            resolve(ackValue);
+            return;
+          }
+
+          if (attempt > retries) {
+            reject(new Error("Max retries reached"));
+            return;
+          }
+
+          setTimeout(tryEmit, backoff * attempt);
+        });
+      };
+
+      tryEmit();
+    });
   }
 
    async connect() {

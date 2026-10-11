@@ -47,10 +47,18 @@ export class PlayerSessionService {
   }
 
   private subscriptions = new Subscription();
+  private receivedEvents = new Set<string>();
 
   constructor( private websocketService: WebSocketService ) {
     Object.entries(this.socketEventHandlers).forEach(([event, handler]) => {
-      const sub = this.websocketService.fromEvent(event).subscribe(value => handler(value));
+      const sub = this.websocketService.fromEventWithAck<{ uuid?: string }>(event).subscribe(({data, ack}) => {
+        if (typeof ack === 'function') ack(true);
+        if (data?.uuid) {
+          if (this.receivedEvents.has(data.uuid)) return;
+          this.receivedEvents.add(data.uuid);
+        }
+        handler(data);
+      });
       this.subscriptions.add(sub);
     });
 

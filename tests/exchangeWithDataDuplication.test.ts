@@ -5,27 +5,13 @@ import {PlayerSessionService} from '../src/services/playersession.service';
 import {LinkExchangeSession} from '../src/shared/linkExchange/linkExchangeSession';
 import {CelioDeviceMock} from './mocks/celioDeviceMock';
 import {CommandEmitterSocketIO} from '../src/shared/linkExchange/commandEmitter/commandEmitter.socketIO';
-import {DataPacket} from '../src/shared/linkExchange/commandEmitter/commandEmitter.abstract';
+import {StatusEmitterLinkDevice} from '../src/shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
+import {DataPacket} from '../src/shared/linkExchange/common';
 
 export class LinkDeviceExchangeMockDuplication extends LinkExchangeSession {
 
   override handleDeviceDataToSocket(data: DataArray) {
-    const queued = this.deviceQueue.shift();
-    console.log("Device queue status: " + JSON.stringify(this.deviceQueue));
-    if (queued) {
-      this.linkDeviceService.sendData(queued).then(
-        () => console.log("Transmit data to device: ", queued),
-        () => {
-          console.log("Transmit data to device: ERROR, Unshift data to queue...");
-          this.deviceQueue.unshift(queued);
-        }
-      );
-    }
-
-    if (data[0] == 0x00) return;
-    if ((data[0] == 0xCAFE) && (data[1] == 0x11)) return;
-
-    let packet: DataPacket = new DataPacket(this.transmittedPacketCounter, data);
+    let packet: DataPacket = new DataPacket(this.transmittedPacketCounter, data as any);
     this.commandEmitter.receiveData(packet);
     this.commandEmitter.receiveData(packet);
     this.transmittedPacketCounter++;
@@ -54,17 +40,17 @@ test("Exchange Data with repeated data packets", () => new Promise<void>(async d
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB);
 
   // Mock sends out packets twice instead of once
-  const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockDuplication(new CommandEmitterSocketIO(websocketServiceA), linkDeviceServiceMockA as any);
-  websocketServiceA.connect();
-  let sessionInfo = await playerSessionServiceA.createSession()
+  const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockDuplication(new CommandEmitterSocketIO(websocketServiceA), new StatusEmitterLinkDevice(linkDeviceServiceMockA as any));
+  await websocketServiceA.connect();
+  let sessionInfo = await playerSessionServiceA.enterSession()
   expect(sessionInfo.full).toEqual(false);
 
   const websocketServiceB = new WebSocketService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
   const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA);
-  const linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), linkDeviceServiceMockB as any);
-  websocketServiceB.connect();
-  sessionInfo = await playerSessionServiceB.joinSession(sessionInfo.id)
+  const linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), new StatusEmitterLinkDevice(linkDeviceServiceMockB as any));
+  await websocketServiceB.connect();
+  sessionInfo = await playerSessionServiceB.enterSession(sessionInfo.id)
   expect(sessionInfo.full).toEqual(true);
 
   await linkDeviceServiceMockA.connectDevice()

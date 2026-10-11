@@ -24,10 +24,9 @@ export class CelioDeviceMock {
   }
 
   private randomDataArray(secondSlot: UInt16): DataArray {
-    return [
-      this.randomUInt16(),secondSlot , this.randomUInt16(), this.randomUInt16(),
-      this.randomUInt16(), this.randomUInt16(), this.randomUInt16(), this.randomUInt16(),
-    ];
+    const data = Array.from({length: 32}, () => this.randomUInt16());
+    data[1] = secondSlot;
+    return data as DataArray;
   }
 
   private data: DataArray[] = []
@@ -40,9 +39,7 @@ export class CelioDeviceMock {
     }
 
     //sentinel
-    this.data.push([0 as UInt16, 0 as UInt16, 0 as UInt16, 0 as UInt16,
-                    0 as UInt16, 0 as UInt16, 0 as UInt16, 0 as UInt16,
-    ])
+    this.data.push(new Array(32).fill(0) as DataArray)
 
     this.data$ = this.handshakeComplete$.pipe(
       switchMap(() =>
@@ -69,6 +66,8 @@ export class CelioDeviceMock {
   }
 
   receivedData(receivedData: DataArray) {
+    // The all-zero sentinel only marks the end of the partner's data stream
+    if (receivedData.every(value => value === 0)) return;
     if (this.index == this.data.length - 1) {
       this.index = 0;
     }
