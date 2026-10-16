@@ -1,6 +1,8 @@
 import { test, expect } from "vitest";
 import { PlayerSessionService, ErrorType } from "../src/services/playersession.service.js";
 import { WebSocketService } from "../src/services/websocket.service.js";
+import { LinkStatus } from '../src/shared/linkExchange/common';
+import { v4 as uuidv4 } from 'uuid';
 
 function delay(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -206,3 +208,29 @@ test("Partner Disconnect Event", {timeout: 7000}, () => new Promise<void>(async 
 
 
 }));
+
+test("Only the partner gets sessionClose when a player leaves a started session", async () => {
+
+  const websocketService = new WebSocketService();
+  const playerSessionService = new PlayerSessionService(websocketService);
+  await websocketService.connect();
+  const sessionInfo = await playerSessionService.enterSession();
+
+  const websocketServiceLeave = new WebSocketService();
+  const playerSessionServiceLeave = new PlayerSessionService(websocketServiceLeave);
+  await websocketServiceLeave.connect();
+  await playerSessionServiceLeave.enterSession(sessionInfo.id);
+
+  let partnerClosed = false;
+  let leaverClosed = false;
+  playerSessionService.sessionClose$.subscribe(() => partnerClosed = true);
+  playerSessionServiceLeave.sessionClose$.subscribe(() => leaverClosed = true);
+
+  // A status starts the session, so leaving now closes it for both
+  await websocketServiceLeave.emitWithRetry('deviceStatus', {uuid: uuidv4(), linkStatus: LinkStatus.AwaitMode});
+  playerSessionServiceLeave.leaveSession();
+  await delay(500);
+
+  expect(partnerClosed).toEqual(true);
+  expect(leaverClosed).toEqual(false);
+});
