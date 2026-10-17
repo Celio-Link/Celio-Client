@@ -10,6 +10,9 @@ export class CelioDeviceMock {
 
   private handshakeComplete$ = new Subject<void>();
 
+  // The device that reports LinkConnected first is linked on its own, the others are linked by ConnectLink
+  private linkConnected = false;
+
   private currentStatus: LinkStatus | undefined = LinkStatus.AwaitMode;
   public commands: CommandType[] = [];
 
@@ -34,7 +37,8 @@ export class CelioDeviceMock {
     return data as DataArray;
   }
 
-  private data: DataArray[] = []
+  // Data this device sends, ending with the all-zero sentinel
+  public readonly data: DataArray[] = []
 
   constructor(protected receiveCallback: (received: DataArray, history: DataArray) => void,
               numberOfEmits: number, private intervalMs = 500) {
@@ -62,8 +66,10 @@ export class CelioDeviceMock {
       const subscription = interval(this.intervalMs).subscribe(() => {
         console.log("Celio device '" + this.id+ "' has emitted a LinkStatus event: " + LinkStatus[this.currentStatus!]);
         if (!this.currentStatus) return
-        subscriber.next(this.currentStatus!);
+        const status = this.currentStatus;
+        subscriber.next(status);
         this.currentStatus = undefined;
+        if (status === LinkStatus.LinkConnected) this.connectLink();
       })
 
       return () => subscription.unsubscribe();
@@ -82,7 +88,15 @@ export class CelioDeviceMock {
   }
 
   restart() {
+    this.linkConnected = false;
     this.currentStatus = LinkStatus.AwaitMode;
+  }
+
+  private connectLink() {
+    if (this.linkConnected) return;
+    this.linkConnected = true;
+    this.handshakeComplete$.next();
+    this.onConnectedCallback();
   }
 
   setCurrentCommand(command: CommandType, payload: Uint8Array = new Uint8Array(0)) {
@@ -104,8 +118,7 @@ export class CelioDeviceMock {
         break;
 
       case CommandType.ConnectLink:
-        this.handshakeComplete$.next();
-        this.onConnectedCallback();
+        this.connectLink();
         break;
 
       case CommandType.MockCloseLink:
