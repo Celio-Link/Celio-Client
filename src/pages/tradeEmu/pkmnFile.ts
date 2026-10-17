@@ -1,3 +1,5 @@
+import {experienceTables, speciesData} from './speciesData';
+
 export class PkmnFile {
 
   private static arrangements = [
@@ -287,7 +289,7 @@ export class PkmnFile {
     [302, ["NINJASK", 291]],
     [303, ["SHEDINJA", 292]],
     [304, ["TAILLOW", 276]],
-    [305, ["SWELLOW", 297]],
+    [305, ["SWELLOW", 277]],
     [306, ["SHROOMISH", 285]],
     [307, ["BRELOOM", 286]],
     [308, ["SPINDA", 327]],
@@ -321,8 +323,8 @@ export class PkmnFile {
     [336, ["HARIYAMA", 297]],
     [337, ["ELECTRIKE", 309]],
     [338, ["MANECTRIC", 310]],
-    [339, ["NUMEL", 323]],
-    [340, ["CAMERUPT", 324]],
+    [339, ["NUMEL", 322]],
+    [340, ["CAMERUPT", 323]],
     [341, ["SPHEAL", 363]],
     [342, ["SEALEO", 364]],
     [343, ["WALREIN", 365]],
@@ -427,7 +429,51 @@ export class PkmnFile {
       this.decryptPkFile(encryptedBuffer, decryptedBuffer);
     }
 
+    if (file.size === 80)
+    {
+      this.calculatePartyData(decryptedBuffer, encryptedBuffer);
+    }
+
     return new PkmnFile(decryptedBuffer, encryptedBuffer, file.name);
+  }
+
+  // Box-format (80-byte) files lack the party data: level, HP and stats. The game only computes
+  // it when a Pokémon is withdrawn from the PC, so without this it arrives at level 0 with 0 HP.
+  private static calculatePartyData(decryptedBuffer: Uint8Array, encryptedBuffer: Uint8Array) {
+
+    const view = new DataView(decryptedBuffer.buffer);
+    const species = PkmnFile.speciesMap.get(view.getUint16(32, true));
+    if (!species) return;
+
+    const [name, dex] = species;
+    const {baseStats, growthRate} = speciesData.get(dex)!;
+
+    const experience = view.getUint32(36, true);
+    const level = experienceTables[growthRate].filter(minimum => minimum <= experience).length;
+
+    // Natures raise one of Attack, Defense, Speed, Sp. Atk and Sp. Def by 10% and lower another
+    const nature = view.getUint32(0, true) % 25;
+    const raised = Math.floor(nature / 5) + 1;
+    const lowered = nature % 5 + 1;
+    const ivs = view.getUint32(72, true);
+
+    const stats = baseStats.map((base, i) => {
+      const iv = (ivs >>> (5 * i)) & 0x1F;
+      const ev = decryptedBuffer[56 + i];
+      const stat = Math.floor((2 * base + iv + Math.floor(ev / 4)) * level / 100);
+
+      if (i === 0) return name === "SHEDINJA" ? 1 : stat + level + 10;
+      if (raised === lowered) return stat + 5;
+      if (i === raised) return Math.floor((stat + 5) * 110 / 100);
+      if (i === lowered) return Math.floor((stat + 5) * 90 / 100);
+      return stat + 5;
+    });
+
+    decryptedBuffer[84] = level;
+    view.setUint16(86, stats[0], true);
+    stats.forEach((stat, i) => view.setUint16(88 + 2 * i, stat, true));
+
+    encryptedBuffer.set(decryptedBuffer.subarray(80), 80);
   }
 
   private static encryptPkFile(decryptedBuffer: Uint8Array, encryptedBuffer: Uint8Array) {
