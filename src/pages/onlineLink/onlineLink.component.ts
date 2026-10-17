@@ -1,7 +1,7 @@
 import {ChangeDetectorRef, Component, inject, ViewChild} from '@angular/core';
 import {NgClass, NgIf} from '@angular/common';
 
-import {CommandType} from '../../shared/linkExchange/common';
+import {CancelCommand} from '../../shared/linkExchange/common';
 
 import {Subscription} from 'rxjs';
 import {WebSocketService} from '../../services/websocket.service';
@@ -93,7 +93,7 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
   }
 
   disconnectCelioDevice(): void {
-    this.linkDeviceService.sendCommand(CommandType.Cancel);
+    this.linkDeviceService.sendCommand(new CancelCommand());
     this.sessionPanel.leaveSession()
   }
 }

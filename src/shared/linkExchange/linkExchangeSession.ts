@@ -106,8 +106,8 @@ export class LinkExchangeSession {
     if (this.commandSet.has(commandPacket.uuid)) return;
     this.commandSet.add(commandPacket.uuid);
 
-    this.statusEmitter.receiveCommand(commandPacket.command, new Uint8Array(0)).then(
-      () => console.log("Command '"  + CommandType[commandPacket.command] + "' has been send to Celio device"),
+    this.statusEmitter.receiveCommand(commandPacket.command).then(
+      () => console.log("Command '"  + CommandType[commandPacket.command.type] + "' has been send to Celio device"),
       () => console.log("Command send to Celio device failed with: ERROR")
     )
   }

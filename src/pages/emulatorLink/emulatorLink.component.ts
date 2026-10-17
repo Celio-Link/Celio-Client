@@ -1,6 +1,6 @@
 import {Component, inject, ChangeDetectorRef, ViewChild} from '@angular/core';
 import {NgClass, NgIf} from '@angular/common';
-import {CommandType, LinkStatus} from '../../shared/linkExchange/common';
+import {CancelCommand, LinkStatus} from '../../shared/linkExchange/common';
 import {LinkDeviceService} from '../../services/linkdevice.service';
 import {Subscription, take} from 'rxjs';
 import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
@@ -110,7 +110,7 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
       .pipe(take(1))
       .subscribe(() => {
         if (this.linkDeviceService.isConnected()) {
-          this.linkDeviceService.sendCommand(CommandType.Cancel);
+          this.linkDeviceService.sendCommand(new CancelCommand());
           console.log("Starting after Close$ fired");
           if (!this.closing) this.startWaitForServer();
         }
@@ -151,6 +151,6 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
   }
 
   disconnect(): void {
-    this.linkDeviceService.sendCommand(CommandType.Cancel);
+    this.linkDeviceService.sendCommand(new CancelCommand());
   }
 }

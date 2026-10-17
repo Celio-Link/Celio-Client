@@ -47,7 +47,7 @@ test("Exchange Data with repeated command packets", () => new Promise<void>(asyn
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB);
 
   celioDeviceA.onConnectedCallback = () => {
-    expect([CommandType.SetModeMaster, CommandType.SetModeSlave]).toContain(celioDeviceA.commands[0])
+    expect([CommandType.PlayerSettings, CommandType.SetModeSlave]).toContain(celioDeviceA.commands[0])
     expect(celioDeviceA.commands.slice(1)).toEqual([CommandType.StartHandshake, CommandType.ConnectLink])
   }
 
@@ -62,7 +62,7 @@ test("Exchange Data with repeated command packets", () => new Promise<void>(asyn
   const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA);
 
   celioDeviceB.onConnectedCallback = () => {
-    expect([CommandType.SetModeMaster, CommandType.SetModeSlave]).toContain(celioDeviceB.commands[0])
+    expect([CommandType.PlayerSettings, CommandType.SetModeSlave]).toContain(celioDeviceB.commands[0])
     expect(celioDeviceB.commands.slice(1)).toEqual([CommandType.StartHandshake, CommandType.ConnectLink])
   }
 

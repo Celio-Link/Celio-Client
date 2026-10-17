@@ -1,5 +1,5 @@
 import {CommandEmitterAbstract} from './commandEmitter.abstract'
-import {CommandType, DataArray, UInt16, CommandPacket, DataPacket, StatusPacket} from '../common';
+import {CommandType, DataArray, UInt8, DataPacket, StatusPacket, DATA_ARRAY_LENGTH, StartHandshakeCommand, ConnectLinkCommand} from '../common';
 import {v4 as uuidv4} from 'uuid';
 
 type Version = {
@@ -70,8 +70,8 @@ export class CommandEmitterWebsocket extends CommandEmitterAbstract {
             const buffer = event.data as ArrayBuffer;
             const view = new DataView(buffer);
 
-            const dataArray = Array.from({ length: 32 }, (_, i) =>
-              view.getUint16(i * 2, false) as UInt16 // false = big-endian
+            const dataArray = Array.from({ length: DATA_ARRAY_LENGTH }, (_, i) =>
+              view.getUint16(i * 2, false) as UInt8 // false = big-endian
             ) as DataArray;
 
             this.dataSubject.next(new DataPacket(this.sequence, dataArray));
@@ -88,9 +88,16 @@ export class CommandEmitterWebsocket extends CommandEmitterAbstract {
             }
           }
           else {
-            const cmd = Number(event.data) as CommandType
-            const commandPacket: CommandPacket = { uuid: uuidv4(), command: cmd };
-            this.commandSubject.next(commandPacket);
+            // The bridge only sends the command number, so commands with args can't come from it
+            const cmd = Number(event.data);
+            const command = cmd === CommandType.StartHandshake ? new StartHandshakeCommand()
+              : cmd === CommandType.ConnectLink ? new ConnectLinkCommand()
+              : undefined;
+            if (!command) {
+              console.warn("Received unsupported command from websocket bridge: " + event.data);
+              return;
+            }
+            this.commandSubject.next({ uuid: uuidv4(), command: command });
           }
         };
       }

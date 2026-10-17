@@ -1,6 +1,6 @@
 import {Component, inject, ChangeDetectorRef, ViewChild} from '@angular/core';
 import {NgClass, NgForOf, NgIf} from '@angular/common';
-import {CommandType, LinkStatus, LinkMode} from '../../shared/linkExchange/common';
+import {CancelCommand, LinkStatus, LinkMode, SetModeCommand} from '../../shared/linkExchange/common';
 import {Subscription} from 'rxjs';
 import {PkmnFile} from './pkmnFile';
 import {LinkDeviceService} from '../../services/linkdevice.service';
@@ -87,7 +87,7 @@ export class TradeEmuComponent extends CelioPageAbstract<StepsState>{
   }
 
   disconnect(): void {
-    this.linkDeviceService.sendCommand(CommandType.Cancel);
+    this.linkDeviceService.sendCommand(new CancelCommand());
     this.pkmFiles = [];
     this.advanceLinkState(StepsState.SelectingPokemon)
   }
@@ -123,7 +123,7 @@ export class TradeEmuComponent extends CelioPageAbstract<StepsState>{
         }
       });
 
-      this.linkDeviceService.sendCommand(CommandType.Cancel).then(ok => {
+      this.linkDeviceService.sendCommand(new CancelCommand()).then(ok => {
         if (!ok) {
           clearTimeout(timeout);
           subscription.unsubscribe();
@@ -131,9 +131,7 @@ export class TradeEmuComponent extends CelioPageAbstract<StepsState>{
         }
       });
 
-      let args: Uint8Array = new Uint8Array(1);
-      args[0] = LinkMode.tradeEmu;
-      this.linkDeviceService.sendCommand(CommandType.SetMode, args).then(ok => {
+      this.linkDeviceService.sendCommand(new SetModeCommand(LinkMode.tradeEmu)).then(ok => {
         if (!ok) {
           clearTimeout(timeout);
           subscription.unsubscribe();

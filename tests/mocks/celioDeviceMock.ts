@@ -85,7 +85,7 @@ export class CelioDeviceMock {
     this.commands.push(command);
 
     switch (command) {
-      case CommandType.SetModeMaster:
+      case CommandType.PlayerSettings:
       case CommandType.SetModeSlave:
         this.currentStatus = LinkStatus.HandshakeReceived;
         break;

@@ -1,4 +1,4 @@
-import {CommandPacket, DataPacket, StatusPacket} from '../common'
+import {Command, CommandPacket, CommandType, DataPacket, StatusPacket} from '../common'
 import {CommandEmitterAbstract} from './commandEmitter.abstract'
 import {concatMap, Subject, Subscription} from 'rxjs';
 import {WebSocketService} from '../../../services/websocket.service';
@@ -35,11 +35,16 @@ export class CommandEmitterSocketIO extends CommandEmitterAbstract {
 
     this.subscriptions.add(
       this.websocketService
-        .fromEventWithAck<CommandPacket>('deviceCommand')
+        .fromEventWithAck<{ uuid: string, command: CommandType, args?: any }>('deviceCommand')
         .subscribe(({data, ack}) => {
           // Duplicates from retries are filtered by uuid in the LinkExchangeSession
           ack(true);
-          this.commandSubject.next(data);
+          const command = Command.fromServer(data.command, data.args);
+          if (!command) {
+            console.warn("Received unknown command: " + data.command);
+            return;
+          }
+          this.commandSubject.next({ uuid: data.uuid, command: command });
         })
     );
 

@@ -1,8 +1,8 @@
-import { Injectable } from '@angular/core';
-import { Subject, Subscription} from 'rxjs';
+import {Injectable} from '@angular/core';
+import {Subject, Subscription} from 'rxjs';
 import {Result} from 'true-myth';
 
-import { WebSocketService } from './websocket.service';
+import {WebSocketService} from './websocket.service';
 
 export enum ErrorType {
   NotFound = "Session not found",
@@ -69,27 +69,30 @@ export class PlayerSessionService {
     this.subscriptions.unsubscribe();
   }
 
-  enterSession(sessionId?: string): Promise<SessionState> {
+  createSession(playerNumber: number) {
     let eventString = "sessionCreate";
-    let eventArgs: string | undefined = undefined;
+    return this.sendSessionRequest(eventString, playerNumber.toString())
+  }
 
-    if (sessionId) {
-      eventString = "sessionJoin";
-      eventArgs = sessionId;
-    }
+  enterSession(sessionId: string): Promise<SessionState> {
+    let eventString = "sessionJoin";
+    return this.sendSessionRequest(eventString, sessionId);
+  }
 
+  private sendSessionRequest(event: string, args: string | undefined = undefined): Promise<SessionState> {
     return new Promise((resolve, reject) => {
-      this.websocketService.emit(eventString, eventArgs, (raw: any) => {
-          const result: Result<SessionState, ErrorType> = this.reviveResult(raw)
-          if (result.isOk) {
-            this.inSession = true;
-            resolve(result.value);
-          } else {
-            reject(result.error);
-          }
-        });
+      this.websocketService.emit(event, args, (raw: any) => {
+        const result: Result<SessionState, ErrorType> = this.reviveResult(raw)
+        if (result.isOk) {
+          this.inSession = true;
+          resolve(result.value);
+        } else {
+          reject(result.error);
+        }
+      });
     });
   }
+
 
   /**
    * Leave the current session. Leaving without being in a session will do nothing.

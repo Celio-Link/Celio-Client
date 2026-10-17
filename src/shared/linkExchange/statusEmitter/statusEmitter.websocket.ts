@@ -1,5 +1,5 @@
 import {StatusEmitterAbstract} from './statusEmitter.abstract';
-import {CommandType, DataArray, LinkStatus, UInt16} from '../common';
+import {Command, DATA_ARRAY_LENGTH, DataArray, LinkStatus, UInt8} from '../common';
 import {Observable, Subject} from 'rxjs';
 
 export class StatusEmitterWebsocket extends StatusEmitterAbstract {
@@ -50,8 +50,8 @@ export class StatusEmitterWebsocket extends StatusEmitterAbstract {
             const buffer = event.data as ArrayBuffer;
             const view = new DataView(buffer);
 
-            const dataArray = Array.from({ length: 32 }, (_, i) =>
-              view.getUint16(i * 2, false) as UInt16 // false = big-endian
+            const dataArray = Array.from({ length: DATA_ARRAY_LENGTH }, (_, i) =>
+              view.getUint16(i * 2, false) as UInt8 // false = big-endian
             ) as DataArray;
 
             this.dataSubject.next(dataArray);
@@ -101,8 +101,9 @@ export class StatusEmitterWebsocket extends StatusEmitterAbstract {
     return this.closeSubject.asObservable();
   }
 
-  receiveCommand(command: CommandType, args: Uint8Array): Promise<boolean> {
-    if (this.socket?.readyState == this.socket?.OPEN) this.socket?.send(command.toString())
+  receiveCommand(command: Command): Promise<boolean> {
+    // The bridge only understands the command number
+    if (this.socket?.readyState == this.socket?.OPEN) this.socket?.send(command.type.toString())
     return Promise.resolve(true);
   }
 

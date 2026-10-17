@@ -34,7 +34,7 @@ export enum CommandType
   SetMode = 0x00,
   Cancel = 0x01,
 
-  SetModeMaster = 0x10,
+  PlayerSettings = 0x10,
   SetModeSlave = 0x11,
   StartHandshake= 0x12,
   ConnectLink = 0x13,

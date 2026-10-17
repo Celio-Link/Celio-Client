@@ -1,4 +1,4 @@
-import {CommandType, LinkStatus, FirmwareVersion, LinkMode} from './linkExchange/common';
+import {CancelCommand, CommandType, GetFirmwareInfoCommand, LinkStatus, FirmwareVersion, LinkMode, SetModeCommand} from './linkExchange/common';
 import {StatusEmitterAbstract} from './linkExchange/statusEmitter/statusEmitter.abstract';
 import {LinkDeviceService} from '../services/linkdevice.service';
 import {catchError, filter, firstValueFrom, map, of, take, timeout} from 'rxjs';
@@ -7,7 +7,7 @@ import {catchError, filter, firstValueFrom, map, of, take, timeout} from 'rxjs';
 export class LinkDeviceUtils {
   static sendCancel(statusEmitter: StatusEmitterAbstract):Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      statusEmitter.receiveCommand(CommandType.Cancel, new Uint8Array(0)).then(ok => {
+      statusEmitter.receiveCommand(new CancelCommand()).then(ok => {
         if (!ok) {
           reject(new Error('Failed to send Cancel command'));
         }
@@ -17,13 +17,8 @@ export class LinkDeviceUtils {
   }
 
   private static enableLinkMode(statusEmitter: StatusEmitterAbstract, mode: LinkMode = LinkMode.onlineLink, variant?: number): Promise<void> {
-    let args: Uint8Array = new Uint8Array(variant === undefined ? 1 : 2);
-    args[0] = mode;
-    if (variant !== undefined) {
-      args[1] = variant;
-    }
     return new Promise<void>((resolve, reject) => {
-      statusEmitter.receiveCommand(CommandType.SetMode, args).then(ok => {
+      statusEmitter.receiveCommand(new SetModeCommand(mode, variant)).then(ok => {
         if (!ok) {
           reject(new Error('Failed to send SetMode command'));
         }
@@ -85,7 +80,7 @@ export class LinkDeviceUtils {
       )
     );
 
-    const sent = await linkDevice.sendCommand(CommandType.GetFirmwareInfo);
+    const sent = await linkDevice.sendCommand(new GetFirmwareInfoCommand());
     return sent ? responsePromise : undefined;
   }
 }

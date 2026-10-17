@@ -1,10 +1,15 @@
-export type UInt16 = number & { __uint16: true };
+export type UInt8 = number & { __uint8: true };
 export type DataArray = [
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16
+  UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+  UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+  UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+  UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+  UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+  UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+  UInt8, UInt8, UInt8
 ];
+
+export const DATA_ARRAY_LENGTH = 51;
 
 export enum LinkStatus {
   AwaitModeEmulator = 0xFF01,
@@ -26,8 +31,7 @@ export enum CommandType {
   SetMode = 0x00,
   Cancel = 0x01,
   GetFirmwareInfo = 0x0F,
-  SetModeMaster = 0x10,
-  SetModeSlave = 0x11,
+  PlayerSettings = 0x10,
   StartHandshake= 0x12,
   ConnectLink = 0x13,
 
@@ -46,9 +50,95 @@ export enum LinkMode {
   advanceWars = 0x04
 }
 
+export abstract class Command {
+  abstract readonly type: CommandType;
+
+  abstract serialize(): Uint8Array<ArrayBuffer>;
+
+  /**
+   * Create a command the server sent, the args are the plain object received from the server.
+   * @param type
+   * @param args
+   * @returns The command, or undefined if the server can't send this type.
+   */
+  static fromServer(type: CommandType, args: any): Command | undefined {
+    switch (type) {
+      case CommandType.PlayerSettings:
+        return new PlayerSettingsCommand(args.playerCount, args.playerIndex);
+      case CommandType.StartHandshake:
+        return new StartHandshakeCommand();
+      case CommandType.ConnectLink:
+        return new ConnectLinkCommand();
+      default:
+        return undefined;
+    }
+  }
+}
+
+export class CancelCommand extends Command {
+  readonly type = CommandType.Cancel;
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Uint8Array.of(this.type);
+  }
+}
+
+export class SetModeCommand extends Command {
+  readonly type = CommandType.SetMode;
+
+  constructor(public readonly mode: LinkMode, public readonly variant?: number) {
+    super();
+  }
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    if (this.variant === undefined) return Uint8Array.of(this.type, this.mode);
+    return Uint8Array.of(this.type, this.mode, this.variant);
+  }
+}
+
+export class GetFirmwareInfoCommand extends Command {
+  readonly type = CommandType.GetFirmwareInfo;
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Uint8Array.of(this.type);
+  }
+}
+
+export class PlayerSettingsCommand extends Command {
+  readonly type = CommandType.PlayerSettings;
+
+  /**
+   * @param playerCount - Number of players in the session.
+   * @param playerIndex - Number of players that sent AwaitMode before this player, so it knows its place.
+   */
+  constructor(public readonly playerCount: number, public readonly playerIndex: number) {
+    super();
+  }
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Uint8Array.of(this.type, this.playerCount, this.playerIndex);
+  }
+}
+
+export class StartHandshakeCommand extends Command {
+  readonly type = CommandType.StartHandshake;
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Uint8Array.of(this.type);
+  }
+}
+
+export class ConnectLinkCommand extends Command {
+  readonly type = CommandType.ConnectLink;
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Uint8Array.of(this.type);
+  }
+}
+
 export interface CommandPacket {
   uuid: string;
-  command: CommandType;
+  command: Command;
 }
 
 export interface StatusPacket {

@@ -3,8 +3,27 @@
     <div class="box relative">
 
       <div *ngIf="state | isCurrentlyInState : SessionState.Start" class="flex flex-col sm:flex-row w-full min-h-[5rem] h-auto sm:h-[5rem] py-2 pb-10 sm:py-0 sm:pb-0">
+<!--        <div class="card rounded-box grid grow place-items-center">-->
+<!--          <button type="button" (click)="enterSession()" class="btn btn-lg whitespace-nowrap">Create<span class="hidden sm:inline"> Session</span></button>-->
+<!--        </div>-->
         <div class="card rounded-box grid grow place-items-center">
-          <button type="button" (click)="enterSession()" class="btn btn-lg whitespace-nowrap">Create<span class="hidden sm:inline"> Session</span></button>
+          <div class="join w-full max-w-xs sm:w-3xs">
+            <input
+              type="number"
+              min="2"
+              max="4"
+              enterkeyhint="go"
+              autocomplete="off"
+              autocorrect="off"
+              autocapitalize="off"
+              spellcheck="false"
+              placeholder="Players: 2"
+              class="input input-lg join-item min-w-0 flex-1 font-Gen3 text-2xl"
+              (input)="onPlayerNumberInput($event)"
+              (compositionend)="onPlayerNumberInput($event)"
+              (keydown.enter)="createSession()" />
+            <button type="button" (click)="createSession()" class="btn btn-lg join-item shrink-0">Create</button>
+          </div>
         </div>
         <div class="divider sm:divider-horizontal"><div class="font-Gen3 text-4xl">OR</div></div>
         <div class="card rounded-box grid grow place-items-center">

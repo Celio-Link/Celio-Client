@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Subject } from 'rxjs';
-import {CommandType, DataArray, LinkStatus} from '../shared/linkExchange/common';
+import {Command, DATA_ARRAY_LENGTH, DataArray, LinkStatus} from '../shared/linkExchange/common';
 
 type Mode = 'usb' | 'serial';
 
@@ -44,7 +44,7 @@ export class LinkDeviceService {
   private dataEventSubject = new Subject<DataArray>();
   public dataEvents$ = this.dataEventSubject.asObservable();
 
-  // Data-channel payloads that aren't 64-byte link packets — command replies
+  // Data-channel payloads that aren't 51-byte link packets — command replies
   // like GetFirmwareInfo (5 bytes: [0x0F, major, minor, patch, flags]).
   private dataRawEventSubject = new Subject<Uint8Array>();
   public dataRawEvents$ = this.dataRawEventSubject.asObservable();
@@ -185,9 +185,9 @@ export class LinkDeviceService {
 
   private dispatchFrame() {
     if (!this.rxBuf) return;
-    if (this.rxChannel === CH_DATA && this.rxBuf.byteLength === 64) {
-      const uint16Array = new Uint16Array(this.rxBuf.buffer, this.rxBuf.byteOffset, 32);
-      const dataArray = Array.from(uint16Array) as DataArray;
+    if (this.rxChannel === CH_DATA && this.rxBuf.byteLength === DATA_ARRAY_LENGTH) {
+      const uint8Array = new Uint8Array(this.rxBuf.buffer, this.rxBuf.byteOffset, DATA_ARRAY_LENGTH);
+      const dataArray = Array.from(uint8Array) as DataArray;
       this.dataEventSubject.next(dataArray);
     } else if (this.rxChannel === CH_DATA && this.rxBuf.byteLength > 0) {
       this.dataRawEventSubject.next(this.rxBuf);
@@ -216,11 +216,12 @@ export class LinkDeviceService {
     }
   }
 
+  //FIXME We currently have only data as size 51 bytes, but this still sucks/smells so bad
   private readData() {
     this.device!.transferIn(this.dataEndpoint, this.endPointBufferSize).then((result: USBInTransferResult) => {
-      if (result.data && result.data.byteLength == 64) {
-        const uint16Array = new Uint16Array(result.data.buffer, result.data.byteOffset, 32);
-        const dataArray = Array.from(uint16Array) as DataArray;
+      if (result.data && result.data.byteLength == DATA_ARRAY_LENGTH) {
+        const uint8Array = new Uint8Array(result.data.buffer, result.data.byteOffset, DATA_ARRAY_LENGTH);
+        const dataArray = Array.from(uint8Array) as DataArray;
         this.dataEventSubject.next(dataArray);
       } else if (result.data && result.data.byteLength > 0) {
         this.dataRawEventSubject.next(new Uint8Array(result.data.buffer, result.data.byteOffset, result.data.byteLength));
@@ -242,11 +243,11 @@ export class LinkDeviceService {
   }
 
   sendData(data: DataArray) : Promise<boolean> {
-    const uint16Array = new Uint16Array(data);
+    const uint8Array = new Uint8Array(data);
     if (this.mode === 'serial') {
-      return this.writeFrame(CH_DATA, new Uint8Array(uint16Array.buffer));
+      return this.writeFrame(CH_DATA, new Uint8Array(uint8Array.buffer));
     }
-    return this.device!.transferOut(this.dataEndpoint, uint16Array).then(
+    return this.device!.transferOut(this.dataEndpoint, uint8Array).then(
       (result: USBOutTransferResult) => {return true },
       (err: Error) => {console.log(err); return false;})
   }
@@ -265,10 +266,8 @@ export class LinkDeviceService {
     }
   }
 
-  async sendCommand(command: CommandType, args: Uint8Array = new Uint8Array(0)): Promise<boolean> {
-    let message: Uint8Array<ArrayBuffer> = new Uint8Array(1 + args.length);
-    message[0] = command;
-    message.set(args, 1)
+  async sendCommand(command: Command): Promise<boolean> {
+    const message = command.serialize();
     if (this.mode === 'serial') {
       return this.writeFrame(CH_CMD, message);
     }
