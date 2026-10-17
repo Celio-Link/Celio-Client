@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'wss://celio-server.up.railway.app:443'
+  apiUrl: 'wss://celio-server-staging.up.railway.app:443'
 };
