@@ -1,7 +1,13 @@
 import {experienceTables, speciesData} from './speciesData';
 
+const BOX_SIZE = 80;
+const PARTY_SIZE = 100;
+const MAIL_INDEX = 85;
+const NO_MAIL = 0xFF;
+
 export class PkmnFile {
 
+  // Growth, attacks, EVs and misc substructure at each position, by PID % 24
   private static arrangements = [
     [0, 1, 2, 3], [0, 1, 3, 2], [0, 2, 1, 3], [0, 2, 3, 1], [0, 3, 1, 2], [0, 3, 2, 1],
     [1, 0, 2, 3], [1, 0, 3, 2], [1, 2, 0, 3], [1, 2, 3, 0], [1, 3, 0, 2], [1, 3, 2, 0],
@@ -398,50 +404,50 @@ export class PkmnFile {
     [411, ["CHIMECHO", 358]],
   ]);
 
-  public pokemonId: number;
-  public pokemonName: string;
+  readonly pokemonId: number;
+  readonly pokemonName: string;
 
-  private constructor(public decryptedBuffer: Uint8Array, public encryptedBuffer: Uint8Array, public name: string) {
-
-    // set mailID to 0xFF to skirt around older pkHex bug
-    this.decryptedBuffer[85] = 0xFF;
-    this.encryptedBuffer[85] = 0xFF;
-
-    this.pokemonId = this.getPokemonId();
-    this.pokemonName = this.getPokemonName();
+  private constructor(readonly decryptedBuffer: Uint8Array, readonly encryptedBuffer: Uint8Array, readonly name: string) {
+    const species = PkmnFile.speciesMap.get(readU16(decryptedBuffer, 32));
+    this.pokemonName = species?.[0] ?? "Unknown";
+    this.pokemonId = species?.[1] ?? 0;
   }
 
+  // .pk3 (decrypted) or .ek3 (encrypted), in box (80-byte) or party (100-byte) form
   static async fromFile(file: File): Promise<PkmnFile> {
-
-    let decryptedBuffer = new Uint8Array(100);
-    let encryptedBuffer = new Uint8Array(100);
-
-    if (file.name.endsWith(".pk3"))
-    {
-      let buffer = await file.arrayBuffer()
-      decryptedBuffer.set(new Uint8Array(buffer))
-      this.encryptPkFile(decryptedBuffer, encryptedBuffer);
-    }
-    else if (file.name.endsWith(".ek3"))
-    {
-      let buffer = await file.arrayBuffer()
-      encryptedBuffer.set(new Uint8Array(buffer))
-      this.decryptPkFile(encryptedBuffer, decryptedBuffer);
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (bytes.length !== BOX_SIZE && bytes.length !== PARTY_SIZE) {
+      throw new Error(`${file.name} is not a Generation 3 Pokémon file.`);
     }
 
-    if (file.size === 80)
-    {
-      this.calculatePartyData(decryptedBuffer, encryptedBuffer);
+    let decrypted = new Uint8Array(PARTY_SIZE);
+    decrypted.set(bytes);
+    if (!PkmnFile.hasValidChecksum(decrypted)) decrypted = PkmnFile.decrypt(decrypted);
+    const isBadEgg = (decrypted[19] & 1) !== 0;
+    if (!PkmnFile.hasValidChecksum(decrypted) || !PkmnFile.speciesMap.has(readU16(decrypted, 32)) || isBadEgg) {
+      throw new Error(`${file.name} is damaged or not a valid Pokémon.`);
     }
 
-    return new PkmnFile(decryptedBuffer, encryptedBuffer, file.name);
+    decrypted[MAIL_INDEX] = NO_MAIL;
+    if (bytes.length === BOX_SIZE || decrypted[84] === 0) PkmnFile.calculatePartyData(decrypted);
+    return new PkmnFile(decrypted, PkmnFile.encrypt(decrypted), file.name);
+  }
+
+  // A Pokémon as the game sends it over the link: a party structure, encrypted
+  static fromTraded(traded: Uint8Array): PkmnFile {
+    const encrypted = traded.slice(0, PARTY_SIZE);
+    encrypted[MAIL_INDEX] = NO_MAIL;
+    const decrypted = PkmnFile.decrypt(encrypted);
+    const [name, dex] = PkmnFile.speciesMap.get(readU16(decrypted, 32)) ?? ["UNKNOWN", 0];
+    const pid = readU32(decrypted, 0).toString(16).toUpperCase().padStart(8, "0");
+    return new PkmnFile(decrypted, encrypted, `${String(dex).padStart(3, "0")} - ${name} - ${pid}.pk3`);
   }
 
   // Box-format (80-byte) files lack the party data: level, HP and stats. The game only computes
   // it when a Pokémon is withdrawn from the PC, so without this it arrives at level 0 with 0 HP.
-  private static calculatePartyData(decryptedBuffer: Uint8Array, encryptedBuffer: Uint8Array) {
+  private static calculatePartyData(decryptedBuffer: Uint8Array) {
 
-    const view = new DataView(decryptedBuffer.buffer);
+    const view = new DataView(decryptedBuffer.buffer, decryptedBuffer.byteOffset, PARTY_SIZE);
     const species = PkmnFile.speciesMap.get(view.getUint16(32, true));
     if (!species) return;
 
@@ -472,81 +478,51 @@ export class PkmnFile {
     decryptedBuffer[84] = level;
     view.setUint16(86, stats[0], true);
     stats.forEach((stat, i) => view.setUint16(88 + 2 * i, stat, true));
-
-    encryptedBuffer.set(decryptedBuffer.subarray(80), 80);
   }
 
-  private static encryptPkFile(decryptedBuffer: Uint8Array, encryptedBuffer: Uint8Array) {
-
-    let trainerStuff = decryptedBuffer.subarray(0, 32)
-    let growth = decryptedBuffer.slice(32, 44)
-    let attacks = decryptedBuffer.slice(44, 56)
-    let evs = decryptedBuffer.slice(56, 68)
-    let misc = decryptedBuffer.slice(68, 80)
-    let stats = decryptedBuffer.subarray(80, 100)
-
-    let structures = [growth, attacks, evs, misc]
-
-    const view = new DataView(trainerStuff.buffer, trainerStuff.byteOffset, 8);
-    const pid = view.getUint32(0, true);
-    const otId = view.getUint32(4, true);
-
-    structures.forEach(structure => {
-      const u32 = new Uint32Array(structure.buffer, structure.byteOffset, structure.byteLength / 4);
-      for (let i = 0; i < u32.length; i++) {
-        u32[i] ^= pid;
-        u32[i] ^= otId;
-      }
-    })
-
-    encryptedBuffer.set(trainerStuff, 0)
-    PkmnFile.arrangements[(pid % 24)].forEach((value: number, index: number) => {
-      encryptedBuffer.set(structures[value], 32 + (index * 12))
-    })
-    encryptedBuffer.set(stats, 80)
+  private static hasValidChecksum(data: Uint8Array): boolean {
+    let sum = 0;
+    for (let at = 32; at < BOX_SIZE; at += 2) sum = (sum + readU16(data, at)) & 0xFFFF;
+    return sum === readU16(data, 28);
   }
 
-  private static decryptPkFile(encryptedBuffer: Uint8Array, decryptedBuffer: Uint8Array) {
-
-    let trainerStuff = encryptedBuffer.subarray(0, 32)
-    let data0 = encryptedBuffer.slice(32, 44)
-    let data1 = encryptedBuffer.slice(44, 56)
-    let data2 = encryptedBuffer.slice(56, 68)
-    let data3 = encryptedBuffer.slice(68, 80)
-    let stats = encryptedBuffer.subarray(80, 100)
-
-    const view = new DataView(trainerStuff.buffer, trainerStuff.byteOffset, 8);
-    const pid = view.getUint32(0, true);
-    const otId = view.getUint32(4, true);
-
-    let structures = [data0, data1, data2, data3];
-
-    structures.forEach(structure => {
-      const u32 = new Uint32Array(structure.buffer, structure.byteOffset, structure.byteLength / 4);
-      for (let i = 0; i < u32.length; i++) {
-        u32[i] ^= pid;
-        u32[i] ^= otId;
-      }
-    })
-
-    decryptedBuffer.set(trainerStuff, 0)
-    PkmnFile.arrangements[(pid % 24)].forEach((value: number, index: number) => {
-      decryptedBuffer.set(structures[index], 32 + (value * 12))
-    })
-    decryptedBuffer.set(stats, 80)
+  // The substructures are XORed with PID ^ OT ID
+  private static cipher(data: Uint8Array) {
+    const key = (readU32(data, 0) ^ readU32(data, 4)) >>> 0;
+    for (let at = 32; at < BOX_SIZE; at += 4) writeU32(data, at, (readU32(data, at) ^ key) >>> 0);
   }
 
-  getPokemonName(): string {
-    const view = new DataView(this.decryptedBuffer.buffer, 32, 2);
-    const species = PkmnFile.speciesMap.get(view.getUint16(0, true));
-    if (!species) return "Unknown";
-    return species[0];
+  private static encrypt(decrypted: Uint8Array): Uint8Array {
+    const encrypted = decrypted.slice();
+    PkmnFile.arrangements[readU32(decrypted, 0) % 24].forEach((substructure, position) => {
+      encrypted.set(decrypted.subarray(32 + substructure * 12, 44 + substructure * 12), 32 + position * 12);
+    });
+    PkmnFile.cipher(encrypted);
+    return encrypted;
   }
 
-  getPokemonId(): number {
-    const view = new DataView(this.decryptedBuffer.buffer, 32, 2);
-    const species = PkmnFile.speciesMap.get(view.getUint16(0, true));
-    if (!species) return 0;
-    return species[1];
+  private static decrypt(encrypted: Uint8Array): Uint8Array {
+    const plain = encrypted.slice();
+    PkmnFile.cipher(plain);
+    const decrypted = plain.slice();
+    PkmnFile.arrangements[readU32(plain, 0) % 24].forEach((substructure, position) => {
+      decrypted.set(plain.subarray(32 + position * 12, 44 + position * 12), 32 + substructure * 12);
+    });
+    return decrypted;
   }
+}
+
+function readU16(data: Uint8Array, at: number): number {
+  return data[at] | (data[at + 1] << 8);
+}
+
+function readU32(data: Uint8Array, at: number): number {
+  return (data[at] | (data[at + 1] << 8) | (data[at + 2] << 16) | (data[at + 3] << 24)) >>> 0;
+}
+
+function writeU32(data: Uint8Array, at: number, value: number) {
+  data[at] = value & 0xFF;
+  data[at + 1] = (value >>> 8) & 0xFF;
+  data[at + 2] = (value >>> 16) & 0xFF;
+  data[at + 3] = (value >>> 24) & 0xFF;
 }
