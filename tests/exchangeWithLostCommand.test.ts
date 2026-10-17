@@ -48,7 +48,7 @@ test("Exchange Data with lost command", {timeout: 10000}, () => new Promise<void
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB);
   const linkDeviceExchangeServiceA = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceA), new StatusEmitterLinkDevice(linkDeviceServiceMockA as any));
   await websocketServiceA.connect();
-  let sessionInfo = await playerSessionServiceA.enterSession()
+  let sessionInfo = await playerSessionServiceA.createSession(2)
   expect(sessionInfo.full).toEqual(false);
 
   const websocketServiceB = new WebSocketService();

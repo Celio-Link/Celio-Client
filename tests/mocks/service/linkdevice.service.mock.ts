@@ -1,14 +1,9 @@
 import { Injectable } from '@angular/core';
 import {interval, map, Observable, repeat, repeatWhen, Subject, Subscriber, takeUntil} from 'rxjs';
 import {CelioDeviceMock} from '../celioDeviceMock';
+import {Command, DataArray} from '../../../src/shared/linkExchange/common';
 
-export type UInt16 = number & { __uint16: true };
-export type DataArray = [
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16
-];
+export type {DataArray, UInt8} from '../../../src/shared/linkExchange/common';
 
 
 export enum LinkStatus {
@@ -35,7 +30,6 @@ export enum CommandType
   Cancel = 0x01,
 
   PlayerSettings = 0x10,
-  SetModeSlave = 0x11,
   StartHandshake= 0x12,
   ConnectLink = 0x13,
 
@@ -77,9 +71,11 @@ export class LinkDeviceServiceMock {
   }
 }
 
-  async sendCommand(command: CommandType, args: Uint8Array = new Uint8Array(0)): Promise<boolean> {
-    this.receivedCommands.push(command);
-    this.localCelioDevice.setCurrentCommand(command);
+  async sendCommand(command: Command): Promise<boolean> {
+    // The device only gets the serialized bytes, like the real one
+    const [type, ...payload] = command.serialize();
+    this.receivedCommands.push(type);
+    this.localCelioDevice.setCurrentCommand(type, Uint8Array.from(payload));
     return true
   }
 

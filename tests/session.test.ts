@@ -15,7 +15,7 @@ test("Create Session", async () => {
 
   await websocketService.connect();
 
-  let sessionInfo = await playerSessionService.enterSession()
+  let sessionInfo = await playerSessionService.createSession(2)
 
   expect(sessionInfo.full).toEqual(false);
 });
@@ -25,7 +25,7 @@ test("Join Session", async () => {
   const websocketService = new WebSocketService();
   const playerSessionService = new PlayerSessionService(websocketService);
   await websocketService.connect();
-  let sessionInfo = await playerSessionService.enterSession();
+  let sessionInfo = await playerSessionService.createSession(2);
 
   expect(sessionInfo.full).toEqual(false);
 
@@ -44,7 +44,7 @@ test("Partner Join Event", () => new Promise<void>(async done => {
   const websocketService = new WebSocketService();
   const playerSessionService = new PlayerSessionService(websocketService);
   await websocketService.connect();
-  let sessionInfo = await playerSessionService.enterSession();
+  let sessionInfo = await playerSessionService.createSession(2);
 
   playerSessionService.partnerEvents$.subscribe(partnerConnected => {
     events.push(partnerConnected);
@@ -71,7 +71,7 @@ test("Partner Leave Event", () => new Promise<void>(async done => {
   const websocketService = new WebSocketService();
   const playerSessionService = new PlayerSessionService(websocketService);
   await websocketService.connect();
-  let sessionInfo = await playerSessionService.enterSession();
+  let sessionInfo = await playerSessionService.createSession(2);
 
   playerSessionService.partnerEvents$.subscribe(partnerConnected => {
     events.push(partnerConnected);
@@ -100,7 +100,7 @@ test("Partner Rejoin Session", () => new Promise<void>(async done => {
   const websocketService = new WebSocketService();
   const playerSessionService = new PlayerSessionService(websocketService);
   await websocketService.connect();
-  let sessionInfo = await playerSessionService.enterSession();
+  let sessionInfo = await playerSessionService.createSession(2);
 
   const websocketServiceJoin = new WebSocketService();
   const playerSessionServiceJoin = new PlayerSessionService(websocketServiceJoin);
@@ -141,7 +141,7 @@ test("Both Parties Leave", () => new Promise<void>(async done => {
   const websocketService = new WebSocketService();
   const playerSessionService = new PlayerSessionService(websocketService);
   await websocketService.connect();
-  let sessionInfo = await playerSessionService.enterSession();
+  let sessionInfo = await playerSessionService.createSession(2);
 
   const websocketServiceJoin = new WebSocketService();
   const playerSessionServiceJoin = new PlayerSessionService(websocketServiceJoin);
@@ -185,7 +185,7 @@ test("Partner Disconnect Event", {timeout: 7000}, () => new Promise<void>(async 
   const websocketService = new WebSocketService();
   const playerSessionService = new PlayerSessionService(websocketService);
   await websocketService.connect();
-  let sessionInfo = await playerSessionService.enterSession();
+  let sessionInfo = await playerSessionService.createSession(2);
 
   playerSessionService.partnerEvents$.subscribe(partnerConnected => {
     events.push(partnerConnected);
@@ -214,7 +214,7 @@ test("Only the partner gets sessionClose when a player leaves a started session"
   const websocketService = new WebSocketService();
   const playerSessionService = new PlayerSessionService(websocketService);
   await websocketService.connect();
-  const sessionInfo = await playerSessionService.enterSession();
+  const sessionInfo = await playerSessionService.createSession(2);
 
   const websocketServiceLeave = new WebSocketService();
   const playerSessionServiceLeave = new PlayerSessionService(websocketServiceLeave);

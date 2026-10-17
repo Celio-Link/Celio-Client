@@ -32,11 +32,11 @@ export class PlayerSessionService {
 
   private socketEventHandlers: Record<string, (data?: any) => void> = {
 
-    partnerJoined: () => {
+    partyReady: () => {
       this.partnerEventSubject.next(true);
     },
 
-    partnerLeft: () => {
+    partyNotReady: () => {
       this.partnerEventSubject.next(false);
     },
 
@@ -71,7 +71,7 @@ export class PlayerSessionService {
 
   createSession(playerNumber: number) {
     let eventString = "sessionCreate";
-    return this.sendSessionRequest(eventString, playerNumber.toString())
+    return this.sendSessionRequest(eventString, playerNumber)
   }
 
   enterSession(sessionId: string): Promise<SessionState> {
@@ -79,7 +79,7 @@ export class PlayerSessionService {
     return this.sendSessionRequest(eventString, sessionId);
   }
 
-  private sendSessionRequest(event: string, args: string | undefined = undefined): Promise<SessionState> {
+  private sendSessionRequest(event: string, args: string | number | undefined = undefined): Promise<SessionState> {
     return new Promise((resolve, reject) => {
       this.websocketService.emit(event, args, (raw: any) => {
         const result: Result<SessionState, ErrorType> = this.reviveResult(raw)

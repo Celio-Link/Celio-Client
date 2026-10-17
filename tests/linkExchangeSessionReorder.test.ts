@@ -2,11 +2,11 @@ import { test, expect } from "vitest";
 import { LinkExchangeSession } from '../src/shared/linkExchange/linkExchangeSession';
 import { CommandEmitterAbstract } from '../src/shared/linkExchange/commandEmitter/commandEmitter.abstract';
 import { StatusEmitterAbstract } from '../src/shared/linkExchange/statusEmitter/statusEmitter.abstract';
-import { CommandType, DataArray, DataPacket, StatusPacket, UInt16 } from '../src/shared/linkExchange/common';
+import { Command, DATA_ARRAY_LENGTH, DataArray, DataPacket, StatusPacket, UInt8 } from '../src/shared/linkExchange/common';
 
 class FakeCommandEmitter extends CommandEmitterAbstract {
   deliver(sequence: number) {
-    this.dataSubject.next(new DataPacket(sequence, new Array(32).fill(sequence) as DataArray));
+    this.dataSubject.next(new DataPacket(sequence, new Array(DATA_ARRAY_LENGTH).fill(sequence) as DataArray));
   }
   receiveData(data: DataPacket): void {}
   receiveStatus(status: StatusPacket): void {}
@@ -16,10 +16,10 @@ class FakeCommandEmitter extends CommandEmitterAbstract {
 class FakeStatusEmitter extends StatusEmitterAbstract {
   public deviceData: number[] = [];
   receiveData(data: DataArray): Promise<boolean> {
-    this.deviceData.push(data[0] as UInt16);
+    this.deviceData.push(data[0] as UInt8);
     return Promise.resolve(true);
   }
-  receiveCommand(command: CommandType, args: Uint8Array): Promise<boolean> {
+  receiveCommand(command: Command): Promise<boolean> {
     return Promise.resolve(true);
   }
   destroy(): void {}

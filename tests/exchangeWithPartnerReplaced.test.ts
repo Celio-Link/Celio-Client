@@ -30,7 +30,7 @@ test("Exchange Data after partner was replaced", {timeout: 10000}, () => new Pro
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceC);
   const linkDeviceExchangeServiceA = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceA), new StatusEmitterLinkDevice(linkDeviceServiceMockA as any));
   await websocketServiceA.connect();
-  let sessionInfo = await playerSessionServiceA.enterSession()
+  let sessionInfo = await playerSessionServiceA.createSession(2)
   expect(sessionInfo.full).toEqual(false);
 
   // B joins and leaves again before any device status was sent

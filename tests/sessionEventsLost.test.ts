@@ -26,11 +26,11 @@ class EventLosingWebSocketService extends WebSocketService {
   }
 }
 
-test("Lost partnerJoined is delivered again", async () => {
-  const websocketService = new EventLosingWebSocketService("partnerJoined");
+test("Lost partyReady is delivered again", async () => {
+  const websocketService = new EventLosingWebSocketService("partyReady");
   const playerSessionService = new PlayerSessionService(websocketService);
   await websocketService.connect();
-  const sessionInfo = await playerSessionService.enterSession();
+  const sessionInfo = await playerSessionService.createSession(2);
   const partnerJoined = firstValueFrom(playerSessionService.partnerEvents$.pipe(timeout(4000)));
 
   const websocketServiceJoin = new WebSocketService();
@@ -45,7 +45,7 @@ test("Lost sessionClose is delivered again", async () => {
   const websocketService = new EventLosingWebSocketService("sessionClose");
   const playerSessionService = new PlayerSessionService(websocketService);
   await websocketService.connect();
-  const sessionInfo = await playerSessionService.enterSession();
+  const sessionInfo = await playerSessionService.createSession(2);
   const sessionClosed = firstValueFrom(playerSessionService.sessionClose$.pipe(timeout(4000)));
 
   const websocketServiceJoin = new WebSocketService();

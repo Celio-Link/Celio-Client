@@ -24,7 +24,7 @@ test("Exchange Data in two sessions", {timeout: 20000}, () => new Promise<void>(
   let linkDeviceExchangeServiceA = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceA), new StatusEmitterLinkDevice(linkDeviceServiceMockA as any))
 
   await websocketServiceA.connect();
-  let sessionInfo = await playerSessionServiceA.enterSession()
+  let sessionInfo = await playerSessionServiceA.createSession(2)
   expect(sessionInfo.full).toEqual(false);
 
   const websocketServiceB = new WebSocketService();
@@ -44,7 +44,7 @@ test("Exchange Data in two sessions", {timeout: 20000}, () => new Promise<void>(
     linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), new StatusEmitterLinkDevice(linkDeviceServiceMockB as any))
 
     await websocketServiceA.connect();
-    const renewedSession = await playerSessionServiceA.enterSession();
+    const renewedSession = await playerSessionServiceA.createSession(2);
     expect(renewedSession.full).toEqual(false);
     await websocketServiceB.connect();
     expect((await playerSessionServiceB.enterSession(renewedSession.id)).full).toEqual(true);

@@ -160,7 +160,7 @@ export class DataPacket {
     for (let i = 0; i < this.data.length; i++) {
       if (i) out += " ";
       if (i % 8 == 0) out += "\n";
-      out += "0x" + (this.data[i] & 0xffff).toString(16).padStart(4, "0").toUpperCase();
+      out += "0x" + (this.data[i] & 0xff).toString(16).padStart(2, "0").toUpperCase();
     }
     return out;
   }

@@ -71,7 +71,7 @@ export class CommandEmitterWebsocket extends CommandEmitterAbstract {
             const view = new DataView(buffer);
 
             const dataArray = Array.from({ length: DATA_ARRAY_LENGTH }, (_, i) =>
-              view.getUint16(i * 2, false) as UInt8 // false = big-endian
+              view.getUint8(i) as UInt8
             ) as DataArray;
 
             this.dataSubject.next(new DataPacket(this.sequence, dataArray));
@@ -131,7 +131,7 @@ export class CommandEmitterWebsocket extends CommandEmitterAbstract {
   }
 
   receiveData(data: DataPacket) : void {
-    const typedArray = new Uint16Array(data.data);
+    const typedArray = new Uint8Array(data.data);
     if (this.socket?.readyState == this.socket?.OPEN) {
       this.socket?.send(typedArray)
     }

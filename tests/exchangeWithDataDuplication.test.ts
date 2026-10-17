@@ -42,7 +42,7 @@ test("Exchange Data with repeated data packets", () => new Promise<void>(async d
   // Mock sends out packets twice instead of once
   const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockDuplication(new CommandEmitterSocketIO(websocketServiceA), new StatusEmitterLinkDevice(linkDeviceServiceMockA as any));
   await websocketServiceA.connect();
-  let sessionInfo = await playerSessionServiceA.enterSession()
+  let sessionInfo = await playerSessionServiceA.createSession(2)
   expect(sessionInfo.full).toEqual(false);
 
   const websocketServiceB = new WebSocketService();

@@ -47,14 +47,15 @@ test("Exchange Data with repeated command packets", () => new Promise<void>(asyn
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB);
 
   celioDeviceA.onConnectedCallback = () => {
-    expect([CommandType.PlayerSettings, CommandType.SetModeSlave]).toContain(celioDeviceA.commands[0])
-    expect(celioDeviceA.commands.slice(1)).toEqual([CommandType.StartHandshake, CommandType.ConnectLink])
+    expect(celioDeviceA.commands).toEqual([CommandType.PlayerSettings, CommandType.StartHandshake, CommandType.ConnectLink])
+    expect(celioDeviceA.playerCount).toEqual(2)
+    expect([0, 1]).toContain(celioDeviceA.playerIndex)
   }
 
   // Mock sends out packets twice instead of once
   const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockStatusDuplication(new CommandEmitterSocketIO(websocketServiceA), new StatusEmitterLinkDevice(linkDeviceServiceMockA as any));
   await websocketServiceA.connect();
-  let sessionInfo = await playerSessionServiceA.enterSession()
+  let sessionInfo = await playerSessionServiceA.createSession(2)
   expect(sessionInfo.full).toEqual(false);
 
   const websocketServiceB = new WebSocketService();
@@ -62,8 +63,9 @@ test("Exchange Data with repeated command packets", () => new Promise<void>(asyn
   const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA);
 
   celioDeviceB.onConnectedCallback = () => {
-    expect([CommandType.PlayerSettings, CommandType.SetModeSlave]).toContain(celioDeviceB.commands[0])
-    expect(celioDeviceB.commands.slice(1)).toEqual([CommandType.StartHandshake, CommandType.ConnectLink])
+    expect(celioDeviceB.commands).toEqual([CommandType.PlayerSettings, CommandType.StartHandshake, CommandType.ConnectLink])
+    expect(celioDeviceB.playerCount).toEqual(2)
+    expect([0, 1]).toContain(celioDeviceB.playerIndex)
   }
 
   const linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), new StatusEmitterLinkDevice(linkDeviceServiceMockB as any));

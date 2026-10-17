@@ -51,7 +51,7 @@ export class StatusEmitterWebsocket extends StatusEmitterAbstract {
             const view = new DataView(buffer);
 
             const dataArray = Array.from({ length: DATA_ARRAY_LENGTH }, (_, i) =>
-              view.getUint16(i * 2, false) as UInt8 // false = big-endian
+              view.getUint8(i) as UInt8
             ) as DataArray;
 
             this.dataSubject.next(dataArray);
@@ -108,7 +108,7 @@ export class StatusEmitterWebsocket extends StatusEmitterAbstract {
   }
 
   receiveData(data: DataArray): Promise<boolean> {
-    const typedArray = new Uint16Array(data);
+    const typedArray = new Uint8Array(data);
     if (this.socket?.readyState == this.socket?.OPEN) this.socket?.send(typedArray)
     return Promise.resolve(true);
   }
