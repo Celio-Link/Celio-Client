@@ -74,6 +74,7 @@ export class CelioSessionComponent {
     if (state === SessionState.Start) {
       this.joinSessionId = "";
     }
+    console.log(state)
     this.sessionStateChange.emit(state);
   }
 
@@ -112,9 +113,9 @@ export class CelioSessionComponent {
       console.error("Could not connect to Server");
       return;
     }
+    this.updateSessionState(SessionState.Waiting);
     sessionRequest().then(session => {
       this.createSessionEvent.emit();
-      this.updateSessionState(SessionState.Waiting);
       this.sessionId = session.id;
     }).catch(error => {
       this.toastService.show(error, 'error', 4000)
