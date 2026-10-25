@@ -227,7 +227,7 @@ test("Only the partner gets sessionClose when a player leaves a started session"
   playerSessionServiceLeave.sessionClose$.subscribe(() => leaverClosed = true);
 
   // A status starts the session, so leaving now closes it for both
-  await websocketServiceLeave.emitWithRetry('deviceStatus', {uuid: uuidv4(), linkStatus: LinkStatus.AwaitMode});
+  await websocketServiceLeave.emitWithRetry('deviceStatus', {uuid: uuidv4(), linkStatus: LinkStatus.AwaitPlayerSettings});
   playerSessionServiceLeave.leaveSession();
   await delay(500);
 

@@ -13,7 +13,7 @@ export const DATA_ARRAY_LENGTH = 51;
 
 export enum LinkStatus {
   AwaitModeEmulator = 0xFF01,
-  AwaitMode = 0xFF02,
+  AwaitPlayerSettings = 0xFF02,
   HandshakeReceived = 0xFF03,
   HandshakeFinished = 0xFF04,
   LinkConnected = 0xFF05,
@@ -155,12 +155,18 @@ export class DataPacket {
     this.data = data;
   }
 
+  // Layout: 3 blocks of 1 uint8 followed by 8 uint16 (little-endian) = 17 bytes each
   private dataToString(): string {
+    const hex = (value: number, digits: number) => "0x" + value.toString(16).padStart(digits, "0").toUpperCase();
     let out = "";
-    for (let i = 0; i < this.data.length; i++) {
-      if (i) out += " ";
-      if (i % 8 == 0) out += "\n";
-      out += "0x" + (this.data[i] & 0xff).toString(16).padStart(2, "0").toUpperCase();
+    for (let block = 0; block < 3; block++) {
+      const offset = block * 17;
+      out += "\n" + hex(this.data[offset] & 0xff, 2) + " |";
+      for (let i = 0; i < 8; i++) {
+        const lo = this.data[offset + 1 + i * 2] & 0xff;
+        const hi = this.data[offset + 2 + i * 2] & 0xff;
+        out += " " + hex(lo | (hi << 8), 4);
+      }
     }
     return out;
   }

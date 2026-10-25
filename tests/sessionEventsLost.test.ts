@@ -54,7 +54,7 @@ test("Lost sessionClose is delivered again", async () => {
   await playerSessionServiceJoin.enterSession(sessionInfo.id);
 
   // A status starts the session, so leaving now closes it for both
-  await websocketServiceJoin.emitWithRetry('deviceStatus', {uuid: uuidv4(), linkStatus: LinkStatus.AwaitMode});
+  await websocketServiceJoin.emitWithRetry('deviceStatus', {uuid: uuidv4(), linkStatus: LinkStatus.AwaitPlayerSettings});
   playerSessionServiceJoin.leaveSession();
 
   await sessionClosed;
