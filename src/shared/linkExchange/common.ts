@@ -45,7 +45,6 @@ export interface FirmwareVersion {
 }
 
 export enum LinkMode {
-  tradeEmu = 0x00,
   onlineLink = 0x01,
   advanceWars = 0x04
 }

@@ -1,18 +1,22 @@
 import {Component, inject, ChangeDetectorRef, ViewChild} from '@angular/core';
 import {NgClass, NgForOf, NgIf} from '@angular/common';
-import {CancelCommand, LinkStatus, LinkMode, SetModeCommand} from '../../shared/linkExchange/common';
 import {Subscription} from 'rxjs';
 import {PkmnFile} from './pkmnFile';
+import {CableLink} from './cableLink';
+import {CableTradePartner, TradePhase} from './cableTrade';
 import {LinkDeviceService} from '../../services/linkdevice.service';
+import {ToastService} from '../../services/toast.service';
 import {CelioPageAbstract} from '../shared/celioPage.abstact';
 import {CelioConnectionStatusComponent} from '../../component/panel/connect/connect.component';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
   SelectingPokemon = 1,
-  UploadingPokemon = 2,
+  StartingLinkMode = 2,
   Ready = 3,
 }
+
+const PARTY_SIZE = 6;
 
 @Component({
   selector: 'app-tradeEmu',
@@ -30,32 +34,24 @@ export class TradeEmuComponent extends CelioPageAbstract<StepsState>{
   @ViewChild(CelioConnectionStatusComponent) connectionPanel!: CelioConnectionStatusComponent;
 
   private linkDeviceService = inject(LinkDeviceService)
-  protected linkDeviceConnected = false;
+  private toastService = inject(ToastService)
 
   protected StepsState = StepsState;
 
   protected pkmFiles: PkmnFile[] = [];
+  protected selectedIndex = 0;
+  protected phase: TradePhase | null = null;
 
+  private link: CableLink | null = null;
   private disconnectSubscription: Subscription;
-  private statusSubscription: Subscription
 
-  constructor(cd: ChangeDetectorRef) {
-    super(cd);
+  constructor(private changeDetector: ChangeDetectorRef) {
+    super(changeDetector);
     this.stepState = StepsState.ConnectingCelioDevice;
-    this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(disconnect => {
-      this.linkDeviceConnected = false;
-      this.pkmFiles = [];
+    this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(() => {
+      this.stopLink();
       this.advanceLinkState(StepsState.ConnectingCelioDevice)
     })
-
-    this.statusSubscription = this.linkDeviceService.statusEvents$.subscribe(statusEvents => {
-      console.log("Status: " + LinkStatus[statusEvents]);
-      if (statusEvents === LinkStatus.EmuTradeSessionFinished) {
-        this.pkmFiles = [];
-        this.stepState = StepsState.SelectingPokemon;
-        this.advanceLinkState(StepsState.SelectingPokemon);
-      }
-    });
   }
 
   ngOnInit() {
@@ -70,94 +66,92 @@ export class TradeEmuComponent extends CelioPageAbstract<StepsState>{
 
   ngOnDestroy() {
     this.disconnectSubscription.unsubscribe();
-    this.statusSubscription.unsubscribe();
-  }
-
-  connect(kind: 'usb' | 'serial' = 'usb'): void {
-    //if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
-
-    this.linkDeviceService.connectDevice(kind)
-      .then(isConnected => {
-          this.linkDeviceConnected = isConnected
-          if (isConnected) {
-            this.advanceLinkState(StepsState.SelectingPokemon)
-          }
-        }
-      )
-  }
-
-  disconnect(): void {
-    this.linkDeviceService.sendCommand(new CancelCommand());
-    this.pkmFiles = [];
-    this.advanceLinkState(StepsState.SelectingPokemon)
+    this.stopLink();
   }
 
   slotSelected($event: Event) {
-    const input = $event!.target as HTMLInputElement; // typecast to HTMLInputElement
-    if (input.files && input.files.length > 0 && input.files[0].size == 100) {
-      PkmnFile.fromFile(input.files[0]).then(pkmFile => {
+    const input = $event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file || this.pkmFiles.length >= PARTY_SIZE) return;
+    PkmnFile.fromFile(file)
+      .then(pkmFile => {
         this.pkmFiles.push(pkmFile);
-        input.value = '';
+        this.changeDetector.detectChanges();
       })
-    }
-    else if (input.files && input.files.length > 0 && input.files[0].size == 80) {
-      PkmnFile.fromFile(input.files[0]).then(pkmFile => {
-        this.pkmFiles.push(pkmFile);
-        input.value = '';
-      })
-    }
+      .catch((error: Error) => this.toastService.show(error.message, 'error', 4000))
+      .finally(() => { input.value = ''; });
   }
 
-  async enableTradeMode():Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        subscription.unsubscribe();
-        reject(new Error('Timed out waiting for device to get ready'));
-      }, 2000);
-
-      const subscription = this.linkDeviceService.statusEvents$.subscribe(statusEvent => {
-        if (statusEvent === LinkStatus.DeviceReady) {
-          clearTimeout(timeout);
-          subscription.unsubscribe();
-          resolve(true);
-        }
-      });
-
-      this.linkDeviceService.sendCommand(new CancelCommand()).then(ok => {
-        if (!ok) {
-          clearTimeout(timeout);
-          subscription.unsubscribe();
-          reject(new Error('Failed to send Cancel command'));
-        }
-      });
-
-      this.linkDeviceService.sendCommand(new SetModeCommand(LinkMode.tradeEmu)).then(ok => {
-        if (!ok) {
-          clearTimeout(timeout);
-          subscription.unsubscribe();
-          reject(new Error('Failed to send SetMode command'));
-        }
-      })
-    });
-  }
-
-  confirmSelection() {
-    this.stepState = StepsState.UploadingPokemon;
-  }
-
-  async upload()
-  {
-    let success = await this.enableTradeMode();
-    if (!success) return;
-    for (const file of this.pkmFiles) {
-      const bytes = file.encryptedBuffer;
-      await this.linkDeviceService.sendDataRaw(bytes.slice(0, 50))
-      await this.linkDeviceService.sendDataRaw(bytes.slice(50))
-    }
-    this.stepState = StepsState.Ready;
+  select(index: number) {
+    this.selectedIndex = index;
   }
 
   remove(index: number) {
     this.pkmFiles = this.pkmFiles.filter((_, i) => i !== index);
+    if (this.selectedIndex >= index && this.selectedIndex > 0) this.selectedIndex--;
+  }
+
+  download(index: number) {
+    const pkmFile = this.pkmFiles[index];
+    const url = URL.createObjectURL(new Blob([pkmFile.decryptedBuffer.slice()], {type: 'application/octet-stream'}));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = pkmFile.name.replace(/\.[ep]k3$/i, '') + '.pk3';
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url));
+  }
+
+  confirmSelection() {
+    this.advanceLinkState(StepsState.StartingLinkMode);
+  }
+
+  start() {
+    if (this.link) return;
+    const partner = new CableTradePartner({
+      party: () => ({mons: this.pkmFiles.map(pkmFile => pkmFile.encryptedBuffer), selected: this.selectedIndex}),
+      events: {
+        phase: phase => {
+          this.phase = phase;
+          this.changeDetector.detectChanges();
+        },
+        traded: (slot, received) => this.traded(slot, received),
+        otherRoom: () => this.toastService.show('Only the Trade Center is available here. Choose it at the Pokémon Center clerk.', 'warning', 6000),
+      },
+    });
+    const link = this.link = new CableLink(this.linkDeviceService, partner);
+    link.start()
+      .then(() => this.advanceLinkState(StepsState.Ready))
+      .catch(error => {
+        this.link = null;
+        this.toastService.show(String(error?.message ?? error), 'error', 4000);
+      });
+  }
+
+  disconnect(): void {
+    this.stopLink();
+    this.advanceLinkState(StepsState.SelectingPokemon)
+  }
+
+  protected phaseText(): string {
+    switch (this.phase) {
+      case 'linkup': return 'Linking up with your game...';
+      case 'room': return 'Take a seat at the table to open the trade menu.';
+      case 'menu': return 'Choose a Pokémon on your game. This page trades the one highlighted above.';
+      case 'trading': return 'Trading...';
+      default: return '';
+    }
+  }
+
+  private traded(slot: number, received: Uint8Array) {
+    const pkmFile = PkmnFile.fromTraded(received);
+    this.pkmFiles[slot] = pkmFile;
+    this.toastService.show(`Received ${pkmFile.pokemonName}`, 'info', 4000);
+    this.changeDetector.detectChanges();
+  }
+
+  private stopLink() {
+    this.link?.stop();
+    this.link = null;
+    this.phase = null;
   }
 }

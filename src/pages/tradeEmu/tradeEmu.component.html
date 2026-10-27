@@ -2,7 +2,7 @@
   <ul class="steps w-full steps-horizontal overflow-x-auto">
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect<span class="hidden sm:inline"> Device</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Select<span class="hidden sm:inline">ing Pokémon</span></li>
-    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Upload<span class="hidden sm:inline">ing Pokémon</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Start<span class="hidden sm:inline"> Link Mode</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Ready</li>
   </ul>
 
@@ -26,15 +26,18 @@
 
         <ul class="list bg-base-100 rounded-box shadow-md w-full lg:w-1/2">
 
-          <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Selected Pokémon</li>
+          <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Your Pokémon (click one to choose what to trade)</li>
 
-          <li class="list-row" *ngFor="let item of pkmFiles; let i = index">
+          <li class="list-row cursor-pointer" [class.bg-base-300]="i === selectedIndex" (click)="select(i)" *ngFor="let item of pkmFiles; let i = index">
             <div><img class="size-12 rounded-box" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{{item?.pokemonId}}.png"/></div>
             <div>
               <div>{{item?.pokemonName}}</div>
               <div class="text-xs uppercase font-semibold opacity-60">{{item.name}}</div>
             </div>
-            <button (click)="remove(i)" class="btn btn-square btn-ghost" [disabled]="!isCurrentlyIn(StepsState.SelectingPokemon)">
+            <button (click)="download(i); $event.stopPropagation()" class="btn btn-square btn-ghost" title="Save as .pk3">
+              <svg class="size-[1.2em]" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></g></svg>
+            </button>
+            <button (click)="remove(i); $event.stopPropagation()" class="btn btn-square btn-ghost" [disabled]="!isCurrentlyIn(StepsState.SelectingPokemon)">
               <svg class="size-[1.2em]" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor"><path d="M6 6L18 18M6 18L18 6"></path></g></svg>
             </button>
           </li>
@@ -51,17 +54,16 @@
 
 
 
-  <div [class.opacity-100]="hasReached(StepsState.UploadingPokemon)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+  <div *ngIf="yetToReach(StepsState.Ready)" [class.opacity-100]="hasReached(StepsState.StartingLinkMode)" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
       <div class="card rounded-box grid h-20 grow place-items-center">
-        <button (click)="upload()" class="btn btn-lg" [disabled]="!isCurrentlyIn(StepsState.UploadingPokemon)">Upload Pokémon</button>
+        <button (click)="start()" class="btn btn-lg" [disabled]="!isCurrentlyIn(StepsState.StartingLinkMode)">Start</button>
       </div>
-      <img *ngIf="isCurrentlyIn(StepsState.UploadingPokemon)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+      <img *ngIf="isCurrentlyIn(StepsState.StartingLinkMode)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
     </div>
   </div>
 
-  <div *ngIf="hasReached(StepsState.Ready)"
-       class="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center transition-opacity duration-500 ease-in-out">
+  <div *ngIf="hasReached(StepsState.Ready)" class="mt-4 transition-opacity duration-500 ease-in-out">
 
     <div class="card rounded-box bg-base-100 w-full max-w-screen-xl mx-auto flex flex-col items-center justify-between p-4 sm:p-8 relative">
 
@@ -79,6 +81,7 @@
         Link Mode is now ready! If you haven't already, connect the <br>
         Link-Cable to your Gameboy Advance and talk to the Pokémon Center clerk.
       </div>
+      <div *ngIf="phaseText()" class="mt-4 font-Gen3 text-2xl">{{ phaseText() }}</div>
     </div>
   </div>
 
