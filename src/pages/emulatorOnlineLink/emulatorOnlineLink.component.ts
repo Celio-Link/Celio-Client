@@ -6,7 +6,7 @@ import {EmulatorSelectionService, SupportedEmulators} from '../../services/emula
 import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
 import {ToastComponent} from '../../component/toast/toast.component';
 import {PlayerSessionService} from '../../services/playersession.service';
-import {WebSocketService} from '../../services/websocket.service';
+import {SocketIOService} from '../../services/socketIO.service';
 import {StatusEmitterWebsocket} from '../../shared/linkExchange/statusEmitter/statusEmitter.websocket';
 import {CommandEmitterSocketIO} from '../../shared/linkExchange/commandEmitter/commandEmitter.socketIO';
 import {CelioPageAbstract} from '../shared/celioPage.abstact';
@@ -45,7 +45,7 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   private statusEmitterWebsocket: StatusEmitterWebsocket | undefined = undefined;
 
-  constructor(cd: ChangeDetectorRef, private toastService: ToastService, private socket: WebSocketService, private emulatorSelection: EmulatorSelectionService) {
+  constructor(cd: ChangeDetectorRef, private toastService: ToastService, private socket: SocketIOService, private emulatorSelection: EmulatorSelectionService) {
     super(cd);
     this.stepState = StepsState.ChooseEmulator;
   }

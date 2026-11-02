@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { environment } from '../environments/environment';
 
 @Injectable({  providedIn: 'root',})
-export class WebSocketService {
+export class SocketIOService {
 
   protected socket: Socket = io(environment.apiUrl, {
     transports: ["websocket"],

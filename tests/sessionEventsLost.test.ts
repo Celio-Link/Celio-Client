@@ -1,6 +1,6 @@
 import { test, expect } from "vitest";
 import { PlayerSessionService } from "../src/services/playersession.service.js";
-import { WebSocketService } from "../src/services/websocket.service.js";
+import { SocketIOService } from "../src/services/socketIO.service";
 import { LinkStatus } from '../src/shared/linkExchange/common';
 import { firstValueFrom, timeout } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from 'uuid';
 /**
  * Loses the first event with the given name, like an event emitted into a dead connection.
  */
-class EventLosingWebSocketService extends WebSocketService {
+class EventLosingWebSocketService extends SocketIOService {
 
   constructor(lostEvent: string) {
     super();
@@ -33,7 +33,7 @@ test("Lost partyReady is delivered again", async () => {
   const sessionInfo = await playerSessionService.createSession(2);
   const partnerJoined = firstValueFrom(playerSessionService.partnerEvents$.pipe(timeout(4000)));
 
-  const websocketServiceJoin = new WebSocketService();
+  const websocketServiceJoin = new SocketIOService();
   const playerSessionServiceJoin = new PlayerSessionService(websocketServiceJoin);
   await websocketServiceJoin.connect();
   await playerSessionServiceJoin.enterSession(sessionInfo.id);
@@ -48,7 +48,7 @@ test("Lost sessionClose is delivered again", async () => {
   const sessionInfo = await playerSessionService.createSession(2);
   const sessionClosed = firstValueFrom(playerSessionService.sessionClose$.pipe(timeout(4000)));
 
-  const websocketServiceJoin = new WebSocketService();
+  const websocketServiceJoin = new SocketIOService();
   const playerSessionServiceJoin = new PlayerSessionService(websocketServiceJoin);
   await websocketServiceJoin.connect();
   await playerSessionServiceJoin.enterSession(sessionInfo.id);

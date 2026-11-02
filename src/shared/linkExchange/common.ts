@@ -106,10 +106,6 @@ export class GetFirmwareInfoCommand extends Command {
 export class PlayerSettingsCommand extends Command {
   readonly type = CommandType.PlayerSettings;
 
-  /**
-   * @param playerCount - Number of players in the session.
-   * @param playerIndex - Number of players that sent AwaitMode before this player, so it knows its place.
-   */
   constructor(public readonly playerCount: number, public readonly playerIndex: number) {
     super();
   }

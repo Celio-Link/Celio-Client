@@ -1,7 +1,7 @@
 import { test, expect, vi } from "vitest";
 import { firstValueFrom, timeout } from 'rxjs';
 import { PlayerSessionService } from "../src/services/playersession.service.js";
-import { WebSocketService } from "../src/services/websocket.service.js";
+import { SocketIOService } from "../src/services/socketIO.service";
 import { LinkExchangeSession } from '../src/shared/linkExchange/linkExchangeSession';
 import { CommandEmitterSocketIO } from '../src/shared/linkExchange/commandEmitter/commandEmitter.socketIO';
 import { StatusEmitterLinkDevice } from '../src/shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
@@ -15,7 +15,7 @@ function delay(ms: number) {
 }
 
 async function connectPlayer() {
-  const websocketService = new WebSocketService();
+  const websocketService = new SocketIOService();
   const playerSessionService = new PlayerSessionService(websocketService);
   await websocketService.connect();
   return { websocketService, playerSessionService };

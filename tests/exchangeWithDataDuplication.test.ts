@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 import {DataArray, LinkDeviceServiceMock} from './mocks/service/linkdevice.service.mock';
-import {WebSocketService} from '../src/services/websocket.service';
+import {SocketIOService} from '../src/services/socketIO.service';
 import {PlayerSessionService} from '../src/services/playersession.service';
 import {LinkExchangeSession} from '../src/shared/linkExchange/linkExchangeSession';
 import {CelioDeviceMock} from './mocks/celioDeviceMock';
@@ -35,7 +35,7 @@ test("Exchange Data with repeated data packets", () => new Promise<void>(async d
     if (numberOfExchanges == successfulExchanges) done();
   },10)
 
-  const websocketServiceA = new WebSocketService();
+  const websocketServiceA = new SocketIOService();
   const playerSessionServiceA = new PlayerSessionService(websocketServiceA);
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB);
 
@@ -45,7 +45,7 @@ test("Exchange Data with repeated data packets", () => new Promise<void>(async d
   let sessionInfo = await playerSessionServiceA.createSession(2)
   expect(sessionInfo.full).toEqual(false);
 
-  const websocketServiceB = new WebSocketService();
+  const websocketServiceB = new SocketIOService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
   const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA);
   const linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), new StatusEmitterLinkDevice(linkDeviceServiceMockB as any));

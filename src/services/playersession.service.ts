@@ -2,7 +2,7 @@ import {Injectable} from '@angular/core';
 import {Subject, Subscription} from 'rxjs';
 import {Result} from 'true-myth';
 
-import {WebSocketService} from './websocket.service';
+import {SocketIOService} from './socketIO.service';
 
 export enum ErrorType {
   NotFound = "Session not found",
@@ -49,7 +49,7 @@ export class PlayerSessionService {
   private subscriptions = new Subscription();
   private receivedEvents = new Set<string>();
 
-  constructor( private websocketService: WebSocketService ) {
+  constructor( private websocketService: SocketIOService ) {
     Object.entries(this.socketEventHandlers).forEach(([event, handler]) => {
       const sub = this.websocketService.fromEventWithAck<{ uuid?: string }>(event).subscribe(({data, ack}) => {
         if (typeof ack === 'function') ack(true);

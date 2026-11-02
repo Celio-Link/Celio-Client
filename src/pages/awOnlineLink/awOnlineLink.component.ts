@@ -4,7 +4,7 @@ import { NgClass, NgIf } from '@angular/common';
 import {CancelCommand, LinkMode} from '../../shared/linkExchange/common';
 
 import {Subscription} from 'rxjs';
-import {WebSocketService} from '../../services/websocket.service';
+import {SocketIOService} from '../../services/socketIO.service';
 import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
 import {ToastComponent} from '../../component/toast/toast.component';
 import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
@@ -57,7 +57,7 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
   // instead of failing mid-handshake. Other modes work on older firmware.
   private static readonly awMinFirmware = { major: 2, minor: 2, patch: 0 };
 
-  constructor(cd: ChangeDetectorRef, private toastService: ToastService, private socket: WebSocketService) {
+  constructor(cd: ChangeDetectorRef, private toastService: ToastService, private socket: SocketIOService) {
     super(cd);
     this.stepState = StepsState.ConnectingCelioDevice;
 

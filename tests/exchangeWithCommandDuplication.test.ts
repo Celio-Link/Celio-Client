@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 import {CommandType, DataArray, LinkDeviceServiceMock} from './mocks/service/linkdevice.service.mock';
-import {WebSocketService} from '../src/services/websocket.service';
+import {SocketIOService} from '../src/services/socketIO.service';
 import {PlayerSessionService} from '../src/services/playersession.service';
 import { LinkExchangeSession } from '../src/shared/linkExchange/linkExchangeSession';
 import {LinkStatus} from '../src/shared/linkExchange/common';
@@ -42,7 +42,7 @@ test("Exchange Data with repeated command packets", () => new Promise<void>(asyn
     if (numberOfExchanges == successfulExchanges) done();
   }, 10)
 
-  const websocketServiceA = new WebSocketService();
+  const websocketServiceA = new SocketIOService();
   const playerSessionServiceA = new PlayerSessionService(websocketServiceA);
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB);
 
@@ -60,7 +60,7 @@ test("Exchange Data with repeated command packets", () => new Promise<void>(asyn
   let sessionInfo = await playerSessionServiceA.createSession(2)
   expect(sessionInfo.full).toEqual(false);
 
-  const websocketServiceB = new WebSocketService();
+  const websocketServiceB = new SocketIOService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
   const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA);
 

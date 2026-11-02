@@ -1,7 +1,7 @@
 import {Component, EventEmitter, Input, Output, Pipe} from '@angular/core';
 import {NgIf} from '@angular/common';
 import {PlayerSessionService} from '../../../services/playersession.service';
-import {WebSocketService} from '../../../services/websocket.service';
+import {SocketIOService} from '../../../services/socketIO.service';
 import {Subscription} from 'rxjs';
 import {LinkExchangeSession} from '../../../shared/linkExchange/linkExchangeSession';
 import {ToastService} from '../../../services/toast.service';
@@ -38,7 +38,7 @@ export class CelioSessionComponent {
   @Output() sessionStateChange = new EventEmitter<SessionState>();
   @Output() createSessionEvent = new EventEmitter<void>();
 
-  constructor(private playerSessionService: PlayerSessionService, private socket: WebSocketService, private toastService: ToastService) {
+  constructor(private playerSessionService: PlayerSessionService, private socket: SocketIOService, private toastService: ToastService) {
 
     this.partnerSubscription = this.playerSessionService.partnerEvents$.subscribe(partnersReady => {
       if (partnersReady) {

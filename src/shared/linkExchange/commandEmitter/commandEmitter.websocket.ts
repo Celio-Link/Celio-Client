@@ -1,12 +1,16 @@
 import {CommandEmitterAbstract} from './commandEmitter.abstract'
-import {CommandType, DataArray, UInt8, DataPacket, StatusPacket, DATA_ARRAY_LENGTH, StartHandshakeCommand, ConnectLinkCommand} from '../common';
+import {CommandType, DataArray, UInt8, DataPacket, StatusPacket, DATA_ARRAY_LENGTH, Command} from '../common';
 import {v4 as uuidv4} from 'uuid';
 
-type Version = {
-  major: number;
-  minor: number;
-  patch: number;
-};
+interface WsCommand {
+  commandType: CommandType;
+  args?: any;
+}
+
+interface WsMessage {
+  type: string;
+  body: UInt8[] | string | number | WsCommand;
+}
 
 export class CommandEmitterWebsocket extends CommandEmitterAbstract {
 
@@ -65,41 +69,38 @@ export class CommandEmitterWebsocket extends CommandEmitterAbstract {
         };
 
         this.socket.onmessage = (event) => {
-          if (event.data instanceof ArrayBuffer) {
 
-            const buffer = event.data as ArrayBuffer;
-            const view = new DataView(buffer);
+          let message: WsMessage = JSON.parse(event.data);
 
-            const dataArray = Array.from({ length: DATA_ARRAY_LENGTH }, (_, i) =>
-              view.getUint8(i) as UInt8
-            ) as DataArray;
+          switch (message.type) {
+            case "data":
+              const buffer = message.body as UInt8[];
 
-            this.dataSubject.next(new DataPacket(this.sequence, dataArray));
-            this.sequence++;
+              const dataArray = Array.from({ length: DATA_ARRAY_LENGTH }, (_, i) =>
+                buffer[i] as UInt8
+              ) as DataArray;
+
+              this.dataSubject.next(new DataPacket(this.sequence, dataArray));
+              this.sequence++;
+              break;
+
+            case "command":
+                let rawCommand = message.body as WsCommand;
+                let command = Command.fromServer(rawCommand.commandType, rawCommand.args);
+                if (command == undefined) return;
+                this.commandSubject.next({ uuid: uuidv4(), command: command });
+              break;
+
+            case "version":
+              console.log(event.data);
+              if (this.versionRequest && message.body as string == "0.3") {
+                clearTimeout(this.versionRequest.timeout);
+                this.versionRequest.resolve(true);
+                this.versionRequest = undefined;
+              }
+              break;
           }
-          else if (event.data === 'sessionClose') {
-            this.destroy();
-          }
-          else if (event.data === '0.2') {
-            if (this.versionRequest) {
-              clearTimeout(this.versionRequest.timeout);
-              this.versionRequest.resolve(true);
-              this.versionRequest = undefined;
-            }
-          }
-          else {
-            // The bridge only sends the command number, so commands with args can't come from it
-            const cmd = Number(event.data);
-            const command = cmd === CommandType.StartHandshake ? new StartHandshakeCommand()
-              : cmd === CommandType.ConnectLink ? new ConnectLinkCommand()
-              : undefined;
-            if (!command) {
-              console.warn("Received unsupported command from websocket bridge: " + event.data);
-              return;
-            }
-            this.commandSubject.next({ uuid: uuidv4(), command: command });
-          }
-        };
+        }
       }
 
       connect();
@@ -126,21 +127,21 @@ export class CommandEmitterWebsocket extends CommandEmitterAbstract {
           resolve(false);
         }, 1000),
       };
-      this.socket!.send("getVersion");
+      let wsMessage: WsMessage = {type: "versionRequest", body: ""}
+      this.socket!.send(JSON.stringify(wsMessage));
     });
   }
 
   receiveData(data: DataPacket) : void {
-    const typedArray = new Uint8Array(data.data);
-    if (this.socket?.readyState == this.socket?.OPEN) {
-      this.socket?.send(typedArray)
-    }
+    if (this.socket?.readyState != this.socket?.OPEN) return;
+    let wsMessage: WsMessage = {type: "data", body: data.data}
+    this.socket?.send(JSON.stringify(wsMessage))
   }
 
   receiveStatus(status: StatusPacket) : void {
-    if (this.socket?.readyState == this.socket?.OPEN) {
-      this.socket?.send(status.linkStatus.toString())
-    }
+    if (this.socket?.readyState != this.socket?.OPEN) return;
+    let wsMessage: WsMessage = {type: "status", body: status.linkStatus}
+    this.socket?.send(JSON.stringify(wsMessage))
   }
 
   destroy() {

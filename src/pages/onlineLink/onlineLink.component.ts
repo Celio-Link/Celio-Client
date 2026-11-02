@@ -4,7 +4,7 @@ import {NgClass, NgIf} from '@angular/common';
 import {CancelCommand} from '../../shared/linkExchange/common';
 
 import {Subscription} from 'rxjs';
-import {WebSocketService} from '../../services/websocket.service';
+import {SocketIOService} from '../../services/socketIO.service';
 import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
 import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
 import {CommandEmitterSocketIO} from '../../shared/linkExchange/commandEmitter/commandEmitter.socketIO';
@@ -45,7 +45,7 @@ export class OnlineLinkComponent extends CelioPageAbstract<StepsState>{
   private disconnectSubscription: Subscription;
 
 
-  constructor(cd: ChangeDetectorRef, private toastService: ToastService, private socket: WebSocketService) {
+  constructor(cd: ChangeDetectorRef, private toastService: ToastService, private socket: SocketIOService) {
     super(cd);
     this.stepState = StepsState.ConnectingCelioDevice;
 

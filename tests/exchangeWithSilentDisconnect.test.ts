@@ -1,6 +1,6 @@
 import { test, expect } from "vitest";
 import { PlayerSessionService } from "../src/services/playersession.service.js";
-import { WebSocketService } from "../src/services/websocket.service.js";
+import { SocketIOService } from "../src/services/socketIO.service";
 import { LinkExchangeSession } from '../src/shared/linkExchange/linkExchangeSession';
 import { LinkDeviceServiceMock, DataArray } from "./mocks/service/linkdevice.service.mock";
 import {CelioDeviceMock} from './mocks/celioDeviceMock';
@@ -11,7 +11,7 @@ import {StatusEmitterLinkDevice} from '../src/shared/linkExchange/statusEmitter/
  * Simulates a connection that dies without the client noticing: writes are silently dropped
  * (like engine.io does when the socket is already dead) until the transport finally closes.
  */
-class SilentlyDisconnectableWebSocketService extends WebSocketService {
+class SilentlyDisconnectableWebSocketService extends SocketIOService {
 
   silentDisconnect(silentMs: number) {
     console.warn("Silently dropping outgoing packets...");
@@ -54,7 +54,7 @@ test("Exchange Data with silent disconnect", {timeout: 20000}, () => new Promise
   let sessionInfo = await playerSessionServiceA.createSession(2)
   expect(sessionInfo.full).toEqual(false);
 
-  const websocketServiceB = new WebSocketService();
+  const websocketServiceB = new SocketIOService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
   const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA);
   const linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), new StatusEmitterLinkDevice(linkDeviceServiceMockB as any));
