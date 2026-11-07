@@ -1,13 +1,13 @@
-<div [class.opacity-100]="active" class="transition-opacity opacity-0 duration-500 ease-in-out">
+<div [class.opacity-100]="active" class="@container transition-opacity opacity-0 duration-500 ease-in-out">
   <div [class.opacity-100]="active" class="transition-opacity opacity-0 duration-500 ease-in-out">
     <div class="box relative">
 
-      <div *ngIf="state | isCurrentlyInState : SessionState.Start" class="flex flex-col sm:flex-row w-full min-h-[5rem] h-auto sm:h-[5rem] py-2 pb-10 sm:py-0 sm:pb-0">
+      <div *ngIf="state | isCurrentlyInState : SessionState.Start" class="flex flex-col @3xl:flex-row w-full min-h-[5rem] h-auto @3xl:h-[5rem] py-2 pb-10 @3xl:py-0 @3xl:pb-0">
 <!--        <div class="card rounded-box grid grow place-items-center">-->
 <!--          <button type="button" (click)="enterSession()" class="btn btn-lg whitespace-nowrap">Create<span class="hidden sm:inline"> Session</span></button>-->
 <!--        </div>-->
         <div class="card rounded-box grid grow place-items-center">
-          <div class="join w-full max-w-xs sm:w-3xs">
+          <div class="join w-full max-w-xs @lg:max-w-md @3xl:w-3xs">
             <input
               type="number"
               min="2"
@@ -25,9 +25,9 @@
             <button type="button" (click)="createSession()" class="btn btn-lg join-item shrink-0">Create</button>
           </div>
         </div>
-        <div class="divider sm:divider-horizontal"><div class="font-Gen3 text-4xl">OR</div></div>
+        <div class="divider @3xl:divider-horizontal"><div class="font-Gen3 text-4xl">OR</div></div>
         <div class="card rounded-box grid grow place-items-center">
-          <div class="join w-full max-w-xs sm:w-3xs">
+          <div class="join w-full max-w-xs @lg:max-w-md @3xl:w-3xs">
             <input
               type="text"
               enterkeyhint="go"

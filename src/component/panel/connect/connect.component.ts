@@ -13,7 +13,10 @@ import {ToastComponent} from '../../toast/toast.component';
 export class CelioConnectionStatusComponent {
 
   @Input() active = false;
+  /** Offer the emulator in the page as the device. */
+  @Input() offerEmulator = false;
   @Output() next = new EventEmitter<void>();
+  @Output() useEmulator = new EventEmitter<void>();
 
   private linkDeviceService = inject(LinkDeviceService)
 

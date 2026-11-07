@@ -12,6 +12,10 @@ import {CelioPageAbstract} from '../shared/celioPage.abstact';
 import {EmulatorSelectionService, SupportedEmulators} from '../../services/emulatorSelection.service';
 import {CelioConnectionStatusComponent} from '../../component/panel/connect/connect.component';
 import {ToastService} from '../../services/toast.service';
+import {EmulatorComponent} from '../../component/emulator/emulator.component';
+import {EmulatorService} from '../../services/emulator.service';
+import {StatusEmitterEmulator} from '../../shared/linkExchange/statusEmitter/statusEmitter.emulator';
+import {LocalLinkSession} from '../../shared/linkExchange/localLinkSession';
 
 
 enum StepsState {
@@ -29,7 +33,8 @@ enum StepsState {
   imports: [
     NgIf,
     NgClass,
-    CelioConnectionStatusComponent
+    CelioConnectionStatusComponent,
+    EmulatorComponent
   ],
   templateUrl: './emulatorLink.component.html'
 })
@@ -48,6 +53,12 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
 
   private linkSession: LinkExchangeSession | undefined = undefined;
 
+  protected emulatorService = inject(EmulatorService)
+  /** The emulator in the page was chosen: it links with the GBA on the GB-Link here, without a server. */
+  protected browser = false;
+  private localLink: LocalLinkSession | null = null;
+  private localLinkClosed: Subscription | null = null;
+
   private disconnectSubscription: Subscription;
   private statusSubscription: Subscription
 
@@ -57,6 +68,8 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
 
     this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(() => {
       this.linkDeviceConnected = false;
+      this.endBrowserLink();
+      this.browser = false;
       this.advanceLinkState(StepsState.ConnectingCelioDevice);
       this.linkSession?.destroy();
       this.linkSession = undefined;
@@ -74,7 +87,10 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
 
   ngOnInit() {
     if (this.linkDeviceService.isConnected()) {
-      if (this.emulatorSelection.isSetupComplete()) {
+      if (this.emulatorSelection.getSelectedEmulator() === SupportedEmulators.browser && this.emulatorService.game()) {
+        this.browser = true;
+        this.advanceLinkState(StepsState.SettingLinkMode);
+      } else if (this.emulatorSelection.isSetupComplete()) {
         this.startWaitForServer()
       } else {
         this.advanceLinkState(StepsState.ChooseEmulator);
@@ -92,11 +108,66 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
     this.disconnectSubscription.unsubscribe();
     this.statusSubscription.unsubscribe();
     this.linkSession?.destroy();
+    this.endBrowserLink();
   }
 
   emulatorSelected(emulator: SupportedEmulators) {
     this.emulatorSelection.setSelectedEmulator(emulator)
     this.advanceLinkState(StepsState.DownloadPlugin)
+  }
+
+  /** The emulator in the page needs no script or server: it can start as soon as its game runs. */
+  protected async browserSelected(): Promise<void> {
+    if (!await this.emulatorService.prepare()) {
+      this.toastService.show('The emulator didn\'t load. Check your connection and try again.', 'error', 5000);
+      return;
+    }
+    this.emulatorSelection.setSelectedEmulator(SupportedEmulators.browser);
+    this.browser = true;
+    this.advanceLinkState(StepsState.SettingLinkMode);
+  }
+
+  /** Closing the emulator goes back to choosing one. */
+  protected emulatorClosed(): void {
+    this.endBrowserLink();
+    this.browser = false;
+    this.emulatorSelection.setSelectedEmulator(SupportedEmulators.none);
+    this.advanceLinkState(StepsState.ChooseEmulator);
+  }
+
+  /** The emulator needs its game before the link mode can start. */
+  protected gameMissing(): boolean {
+    return this.browser && !this.emulatorService.game();
+  }
+
+  private startBrowserLink(): void {
+    const adapter = this.emulatorService.linkAdapter;
+    if (!adapter || this.gameMissing() || this.localLink) return;
+    // The GBA on the GB-Link is seat 0 and leads: a throttled page then slows only its own game, never the GBA's link
+    const devices = [new StatusEmitterLinkDevice(this.linkDeviceService), new StatusEmitterEmulator(adapter)];
+    const localLink = this.localLink = new LocalLinkSession(devices);
+    // Both games left the room: the next visit starts with Start again
+    this.localLinkClosed = localLink.closed$.subscribe(() => this.endBrowserLink());
+    Promise.all(devices.map(device => LinkDeviceUtils.tryEnableLinkMode(device)))
+      .then(() => {
+        if (this.localLink === localLink) this.advanceLinkState(StepsState.Ready);
+      })
+      .catch(error => {
+        this.toastService.show(String(error?.message ?? error), 'error', 4000);
+        this.endBrowserLink();
+      });
+  }
+
+  /** Ends the link between the GBA and the game in the page. */
+  private endBrowserLink(): void {
+    if (!this.localLink) return;
+    this.localLinkClosed?.unsubscribe();
+    this.localLinkClosed = null;
+    this.localLink.destroy();
+    this.localLink = null;
+    this.linkDeviceService.sendCommand(new CancelCommand());
+    this.emulatorService.linkAdapter?.command(new CancelCommand());
+    if (this.browser && this.hasReached(StepsState.SettingLinkMode)) this.advanceLinkState(StepsState.SettingLinkMode);
   }
 
   startWaitForServer(delay: number = 1000) {
@@ -137,6 +208,10 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
   }
 
   start() {
+    if (this.browser) {
+      this.startBrowserLink();
+      return;
+    }
     LinkDeviceUtils.tryEnableLinkMode(new StatusEmitterLinkDevice(this.linkDeviceService))
       .then(() => {
         this.advanceLinkState(StepsState.Ready);
@@ -151,6 +226,10 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
   }
 
   disconnect(): void {
+    if (this.browser) {
+      this.endBrowserLink();
+      return;
+    }
     this.linkDeviceService.sendCommand(new CancelCommand());
   }
 }

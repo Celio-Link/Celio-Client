@@ -8,62 +8,115 @@
 
   <div class="divider"></div>
 
-  <celio-connection-panel [active]="isCurrentlyIn(StepsState.ConnectingCelioDevice)"></celio-connection-panel>
+  <div [ngClass]="device === 'emulator' ? 'grid gap-6 items-start lg:grid-cols-[minmax(0,11fr)_minmax(20rem,9fr)]' : ''">
+    <celio-emulator *ngIf="device === 'emulator'"
+                    [linked]="hasReached(StepsState.Ready)"
+                    (closed)="emulatorClosed()"></celio-emulator>
 
-  <div class="divider"></div>
+    <div class="min-w-0" [ngClass]="device === 'emulator' ? 'flex flex-col gap-4' : ''">
+      <celio-connection-panel *ngIf="device !== 'emulator'" [active]="isCurrentlyIn(StepsState.ConnectingCelioDevice)" [offerEmulator]="true"
+                              (next)="usbConnected()" (useEmulator)="useEmulator()"></celio-connection-panel>
 
-  <div [class.opacity-100]="hasReached(StepsState.SelectingPokemon)" class="transition-opacity opacity-0 duration-500 ease-in-out">
-    <div class="box relative">
-
-      <div class="flex flex-col lg:flex-row w-full min-h-[16rem] lg:h-[32rem]">
-
-        <div class="grid h-auto lg:h-[30rem] w-full lg:w-2/5 place-items-center py-4">
-          <input type="file" accept=".ek3, .pk3" class="file-input" (change)="slotSelected($event)" [disabled]="pkmFiles.length >= 6 || !isCurrentlyIn(StepsState.SelectingPokemon)"/>
-          <button *ngIf="pkmFiles.length >= 1 && isCurrentlyIn(StepsState.SelectingPokemon)" (click)="confirmSelection()" class="btn btn-lg absolute bottom-3 left-2">Confirm selection</button>
+      <!-- The game in the page: the Pokémon, the step's button and the trade's progress in one card next to it -->
+      <div *ngIf="device === 'emulator'" class="box relative @container flex flex-col gap-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <p class="font-Gen3 text-3xl @xs:text-4xl @lg:text-5xl whitespace-nowrap">Pokémon to trade</p>
+          <button type="button" (click)="pokemonFiles.click()" class="btn btn-sm @xs:btn-md @lg:btn-lg text-xl @lg:text-2xl"
+                  [disabled]="pkmFiles.length >= 6 || !isCurrentlyIn(StepsState.SelectingPokemon)">Add Pokémon</button>
+          <input #pokemonFiles type="file" accept=".ek3,.pk3" multiple hidden (change)="slotSelected($event)">
         </div>
 
-        <div class="divider lg:divider-horizontal"></div>
+        <p *ngIf="!pkmFiles.length" class="font-Gen3 text-xl @xs:text-2xl @lg:text-3xl opacity-70">Up to six .pk3 or .ek3 files.</p>
 
-        <ul class="list bg-base-100 rounded-box shadow-md w-full lg:w-1/2">
+        <div *ngIf="pkmFiles.length">
+          <p class="text-xs @xs:text-sm @lg:text-base opacity-60 pb-1">Click one to choose what to trade</p>
+          <ul class="list bg-base-100 rounded-box">
+            <li class="list-row items-center gap-2 px-2 py-1 cursor-pointer" [class.bg-base-300]="i === selectedIndex" (click)="select(i)" *ngFor="let item of pkmFiles; let i = index">
+              <img class="size-8 @xs:size-12 @lg:size-16" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{{item?.pokemonId}}.png" alt=""/>
+              <div class="min-w-0">
+                <div class="truncate @xs:text-base @lg:text-lg">{{item?.pokemonName}}</div>
+                <div class="text-xs @lg:text-sm uppercase font-semibold opacity-60 truncate">{{item.name}}</div>
+              </div>
+              <button (click)="download(i); $event.stopPropagation()" class="btn btn-xs @xs:btn-sm @lg:btn-md btn-square btn-ghost" title="Save as .pk3">
+                <svg class="size-[1.2em]" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></g></svg>
+              </button>
+              <button (click)="remove(i); $event.stopPropagation()" class="btn btn-xs @xs:btn-sm @lg:btn-md btn-square btn-ghost" title="Remove" [disabled]="!isCurrentlyIn(StepsState.SelectingPokemon)">
+                <svg class="size-[1.2em]" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor"><path d="M6 6L18 18M6 18L18 6"></path></g></svg>
+              </button>
+            </li>
+          </ul>
+        </div>
 
-          <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Your Pokémon (click one to choose what to trade)</li>
+        <button *ngIf="isCurrentlyIn(StepsState.SelectingPokemon)" type="button" (click)="confirmSelection()" class="btn text-xl @xs:btn-lg @xs:text-2xl @lg:btn-xl @lg:text-3xl" [disabled]="!pkmFiles.length">Confirm selection</button>
+        <button *ngIf="isCurrentlyIn(StepsState.StartingLinkMode)" type="button" (click)="start()" class="btn text-xl @xs:btn-lg @xs:text-2xl @lg:btn-xl @lg:text-3xl" [disabled]="gameMissing()">Start</button>
+        <p *ngIf="isCurrentlyIn(StepsState.StartingLinkMode) && gameMissing()" class="font-Gen3 text-xl @xs:text-2xl @lg:text-3xl">Start your game first.</p>
 
-          <li class="list-row cursor-pointer" [class.bg-base-300]="i === selectedIndex" (click)="select(i)" *ngFor="let item of pkmFiles; let i = index">
-            <div><img class="size-12 rounded-box" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{{item?.pokemonId}}.png"/></div>
-            <div>
-              <div>{{item?.pokemonName}}</div>
-              <div class="text-xs uppercase font-semibold opacity-60">{{item.name}}</div>
+        <div *ngIf="hasReached(StepsState.Ready)" class="flex flex-col gap-2">
+          <p class="font-Gen3 text-xl @xs:text-2xl @lg:text-3xl">
+            {{ phaseText() || 'Link Mode is ready. In the game, talk to the Cable Club attendant on the second floor of a Pokémon Center and choose the Trade Center.' }}
+          </p>
+          <div>
+            <button type="button" (click)="disconnect()" class="btn btn-sm @xs:btn-md @lg:btn-lg btn-dash btn-error text-xl @lg:text-2xl">Disconnect</button>
+          </div>
+        </div>
+      </div>
+
+      <ng-container *ngIf="device !== 'emulator'">
+        <div class="divider"></div>
+
+        <div [class.opacity-100]="hasReached(StepsState.SelectingPokemon)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+          <div class="box relative">
+
+            <div class="flex flex-col lg:flex-row w-full min-h-[16rem] lg:h-[32rem]">
+
+              <div class="grid h-auto lg:h-[30rem] w-full lg:w-2/5 place-items-center py-4">
+                <input type="file" accept=".ek3, .pk3" class="file-input" (change)="slotSelected($event)" [disabled]="pkmFiles.length >= 6 || !isCurrentlyIn(StepsState.SelectingPokemon)"/>
+                <button *ngIf="pkmFiles.length >= 1 && isCurrentlyIn(StepsState.SelectingPokemon)" (click)="confirmSelection()" class="btn btn-lg mt-4 lg:mt-0 lg:absolute lg:bottom-3 lg:left-2">Confirm selection</button>
+              </div>
+
+              <div class="divider lg:divider-horizontal"></div>
+
+              <ul class="list bg-base-100 rounded-box shadow-md w-full lg:w-1/2">
+
+                <li class="p-4 pb-2 text-xs opacity-60 tracking-wide">Your Pokémon (click one to choose what to trade)</li>
+
+                <li class="list-row cursor-pointer" [class.bg-base-300]="i === selectedIndex" (click)="select(i)" *ngFor="let item of pkmFiles; let i = index">
+                  <div><img class="size-12 rounded-box" src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{{item?.pokemonId}}.png"/></div>
+                  <div>
+                    <div>{{item?.pokemonName}}</div>
+                    <div class="text-xs uppercase font-semibold opacity-60">{{item.name}}</div>
+                  </div>
+                  <button (click)="download(i); $event.stopPropagation()" class="btn btn-square btn-ghost" title="Save as .pk3">
+                    <svg class="size-[1.2em]" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></g></svg>
+                  </button>
+                  <button (click)="remove(i); $event.stopPropagation()" class="btn btn-square btn-ghost" [disabled]="!isCurrentlyIn(StepsState.SelectingPokemon)">
+                    <svg class="size-[1.2em]" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor"><path d="M6 6L18 18M6 18L18 6"></path></g></svg>
+                  </button>
+                </li>
+
+              </ul>
+
             </div>
-            <button (click)="download(i); $event.stopPropagation()" class="btn btn-square btn-ghost" title="Save as .pk3">
-              <svg class="size-[1.2em]" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></g></svg>
-            </button>
-            <button (click)="remove(i); $event.stopPropagation()" class="btn btn-square btn-ghost" [disabled]="!isCurrentlyIn(StepsState.SelectingPokemon)">
-              <svg class="size-[1.2em]" viewBox="0 0 24 24"><g stroke-linejoin="round" stroke-linecap="round" stroke-width="2" fill="none" stroke="currentColor"><path d="M6 6L18 18M6 18L18 6"></path></g></svg>
-            </button>
-          </li>
+            <img *ngIf="isCurrentlyIn(StepsState.SelectingPokemon)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+          </div>
 
-        </ul>
+          <div class="divider"></div>
 
-      </div>
-      <img *ngIf="isCurrentlyIn(StepsState.SelectingPokemon)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
-    </div>
+        </div>
 
-    <div class="divider"></div>
-
-  </div>
-
-
-
-  <div *ngIf="yetToReach(StepsState.Ready)" [class.opacity-100]="hasReached(StepsState.StartingLinkMode)" class="transition-opacity opacity-0 duration-500 ease-in-out">
-    <div class="box relative">
-      <div class="card rounded-box grid h-20 grow place-items-center">
-        <button (click)="start()" class="btn btn-lg" [disabled]="!isCurrentlyIn(StepsState.StartingLinkMode)">Start</button>
-      </div>
-      <img *ngIf="isCurrentlyIn(StepsState.StartingLinkMode)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+        <div *ngIf="yetToReach(StepsState.Ready)" [class.opacity-100]="hasReached(StepsState.StartingLinkMode)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+          <div class="box relative">
+            <div class="card rounded-box grid h-20 grow place-items-center">
+              <button (click)="start()" class="btn btn-lg" [disabled]="!isCurrentlyIn(StepsState.StartingLinkMode)">Start</button>
+            </div>
+            <img *ngIf="isCurrentlyIn(StepsState.StartingLinkMode)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+          </div>
+        </div>
+      </ng-container>
     </div>
   </div>
 
-  <div *ngIf="hasReached(StepsState.Ready)" class="mt-4 transition-opacity duration-500 ease-in-out">
+  <div *ngIf="device !== 'emulator' && hasReached(StepsState.Ready)" class="mt-4 transition-opacity duration-500 ease-in-out">
 
     <div class="card rounded-box bg-base-100 w-full max-w-screen-xl mx-auto flex flex-col items-center justify-between p-4 sm:p-8 relative">
 

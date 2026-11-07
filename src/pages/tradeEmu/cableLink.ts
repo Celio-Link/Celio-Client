@@ -10,8 +10,7 @@ import {
   StartHandshakeCommand
 } from '../../shared/linkExchange/common';
 import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
-import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
-import type {LinkDeviceService} from '../../services/linkdevice.service';
+import {StatusEmitterAbstract} from '../../shared/linkExchange/statusEmitter/statusEmitter.abstract';
 
 // Data frames carry three commands both ways, each a player index byte followed by 8 words
 // (little-endian). The device plays one queued command per cable packet, zeros when none is
@@ -46,12 +45,13 @@ export class CableLink {
   private since = 0;
   private sent = 0;
 
-  constructor(private readonly device: LinkDeviceService, private readonly partner: CablePartner) {}
+  /** device: a GB-Link or the emulator in the page; the link destroys it when it stops. */
+  constructor(private readonly device: StatusEmitterAbstract, private readonly partner: CablePartner) {}
 
   async start() {
     this.running = true;
-    this.subscriptions.add(this.device.statusEvents$.subscribe(status => this.onStatus(status)));
-    this.subscriptions.add(this.device.dataEvents$.subscribe(data => this.onData(data)));
+    this.subscriptions.add(this.device.status$().subscribe(status => this.onStatus(status)));
+    this.subscriptions.add(this.device.data$().subscribe(data => this.onData(data)));
     this.pumpTimer = setInterval(() => this.pump(), 8);
     try {
       await this.enterMode();
@@ -69,16 +69,18 @@ export class CableLink {
     this.timeouts.clear();
     this.subscriptions.unsubscribe();
     this.disconnected();
-    await this.device.sendCommand(new CancelCommand());
+    try {
+      await this.device.receiveCommand(new CancelCommand());
+    } finally {
+      this.device.destroy();
+    }
   }
 
   private async enterMode() {
     this.entering = true;
-    const emitter = new StatusEmitterLinkDevice(this.device);
     try {
-      await LinkDeviceUtils.tryEnableLinkMode(emitter, LinkMode.onlineLink);
+      await LinkDeviceUtils.tryEnableLinkMode(this.device, LinkMode.onlineLink);
     } finally {
-      emitter.destroy();
       this.entering = false;
     }
   }
@@ -86,14 +88,14 @@ export class CableLink {
   private onStatus(status: LinkStatus) {
     switch (status) {
       case LinkStatus.AwaitPlayerSettings:
-        this.device.sendCommand(new PlayerSettingsCommand(2, 1));
+        this.device.receiveCommand(new PlayerSettingsCommand(2, 1));
         break;
       case LinkStatus.HandshakeReceived:
         // The game opened its link: only now may the handshake commands go out.
         this.disconnected();
         this.partner.linkOpened();
-        this.device.sendCommand(new StartHandshakeCommand());
-        this.later(CONNECT_DELAY_MS, () => this.device.sendCommand(new ConnectLinkCommand()));
+        this.device.receiveCommand(new StartHandshakeCommand());
+        this.later(CONNECT_DELAY_MS, () => this.device.receiveCommand(new ConnectLinkCommand()));
         break;
       case LinkStatus.LinkConnected:
         this.since = performance.now();
@@ -151,7 +153,7 @@ export class CableLink {
           frame[at + 2 + i * 2] = (word >> 8) & 0xFF;
         });
       }
-      this.device.sendData(frame as DataArray);
+      this.device.receiveData(frame as DataArray);
       this.sent += BATCH;
     }
   }

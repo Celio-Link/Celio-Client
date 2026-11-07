@@ -1,11 +1,12 @@
 <div class="box relative">
   <div class="flex w-full min-h-[5rem] h-auto py-2">
     <div *ngIf="active" class="card rounded-box grid grow place-items-center">
-      <div class="flex gap-2">
+      <div class="flex flex-wrap justify-center gap-2">
         <button *ngIf="connectTransport()" (click)="connect()" class="btn">
           <span class="sm:hidden">Connect</span>
           <span class="hidden sm:inline">{{ connectLabel() }}</span>
         </button>
+        <button *ngIf="offerEmulator" (click)="useEmulator.emit()" class="btn">Play in Browser</button>
       </div>
     </div>
 
@@ -14,7 +15,11 @@
       Ready!
     </div>
 
-    <div *ngIf="webUsbError" class="font-Gen3 text-4xl">
+    <div *ngIf="active && webUsbError && offerEmulator" class="font-Gen3 text-2xl self-center">
+      To link a Game Boy Advance through a GB-Link, use Chrome, Edge or Firefox 151+.
+    </div>
+
+    <div *ngIf="webUsbError && !offerEmulator" class="font-Gen3 text-4xl">
       Neither WebUSB nor WebSerial is supported by this browser.<br>
       Use Chrome/Edge (WebUSB or WebSerial) or Firefox 151+ (WebSerial).
     </div>

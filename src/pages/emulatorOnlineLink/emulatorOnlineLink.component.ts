@@ -1,4 +1,4 @@
-import {Component, ChangeDetectorRef, ViewChild} from '@angular/core';
+import {Component, ChangeDetectorRef, ViewChild, inject} from '@angular/core';
 import {NgClass, NgIf} from '@angular/common';
 import {Subscription, take} from 'rxjs';
 import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
@@ -13,6 +13,11 @@ import {CelioPageAbstract} from '../shared/celioPage.abstact';
 import {CelioSessionComponent, SessionState} from '../../component/panel/session/session.compomemt';
 import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
 import {ToastService} from '../../services/toast.service';
+import {CancelCommand} from '../../shared/linkExchange/common';
+import {StatusEmitterAbstract} from '../../shared/linkExchange/statusEmitter/statusEmitter.abstract';
+import {StatusEmitterEmulator} from '../../shared/linkExchange/statusEmitter/statusEmitter.emulator';
+import {EmulatorComponent} from '../../component/emulator/emulator.component';
+import {EmulatorService} from '../../services/emulator.service';
 
 enum StepsState {
   ChooseEmulator = 0,
@@ -30,7 +35,8 @@ enum StepsState {
   imports: [
     NgIf,
     NgClass,
-    CelioSessionComponent
+    CelioSessionComponent,
+    EmulatorComponent
   ],
   templateUrl: './emulatorOnlineLink.component.html'
 })
@@ -45,21 +51,40 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   private statusEmitterWebsocket: StatusEmitterWebsocket | undefined = undefined;
 
+  protected emulatorService = inject(EmulatorService)
+  /** The emulator in the page was chosen: it is the device of the session, like a GBA on a GB-Link. */
+  protected browser = false;
+
   constructor(cd: ChangeDetectorRef, private toastService: ToastService, private socket: SocketIOService, private emulatorSelection: EmulatorSelectionService) {
     super(cd);
     this.stepState = StepsState.ChooseEmulator;
   }
 
   ngOnInit() {
-    if (this.emulatorSelection.isSetupComplete()) { this.startWaitForServer() }
+    if (this.emulatorSelection.getSelectedEmulator() === SupportedEmulators.browser && this.emulatorService.game()) {
+      this.browser = true;
+      this.advanceLinkState(StepsState.JoiningSession);
+    } else if (this.emulatorSelection.isSetupComplete()) { this.startWaitForServer() }
   }
 
   ngAfterViewInit() {
     this.sessionPanel.createSessionEvent.subscribe(() => {
+      if (this.browser) {
+        this.sessionPanel.setLinkSession(new LinkExchangeSession(new CommandEmitterSocketIO(this.socket), this.browserDevice()));
+        return;
+      }
       if (this.statusEmitterWebsocket == undefined) return;
       this.sessionPanel.setLinkSession(new LinkExchangeSession(new CommandEmitterSocketIO(this.socket), this.statusEmitterWebsocket))
     })
     this.sessionPanel.sessionStateChange.subscribe(state => {
+      if (this.browser) {
+        switch (state) {
+          case SessionState.Start: this.advanceLinkState(StepsState.JoiningSession); break;
+          case SessionState.Waiting: this.advanceLinkState(StepsState.WaitingForPartner); break;
+          case SessionState.Commit: this.advanceLinkState(StepsState.SettingLinkMode); break;
+        }
+        return;
+      }
       switch (state) {
         case SessionState.Start:
           this.advanceLinkState(StepsState.JoiningSession);
@@ -80,11 +105,43 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
   ngOnDestroy() {
     this.closing = true;
     this.statusEmitterWebsocket?.destroy();
+    if (this.browser) this.sessionPanel.leaveSession();
   }
 
   emulatorSelected(emulator: SupportedEmulators) {
     this.emulatorSelection.setSelectedEmulator(emulator)
     this.advanceLinkState(StepsState.DownloadPlugin)
+  }
+
+  /** The emulator in the page needs no script or local server: the session can begin while the player chooses the game. */
+  protected async browserSelected(): Promise<void> {
+    if (!await this.emulatorService.prepare()) {
+      this.toastService.show('The emulator didn\'t load. Check your connection and try again.', 'error', 5000);
+      return;
+    }
+    this.emulatorSelection.setSelectedEmulator(SupportedEmulators.browser);
+    this.browser = true;
+    this.advanceLinkState(StepsState.JoiningSession);
+  }
+
+  /** Closing the emulator goes back to choosing one. */
+  protected emulatorClosed(): void {
+    this.sessionPanel.leaveSession();
+    this.browser = false;
+    this.emulatorSelection.setSelectedEmulator(SupportedEmulators.none);
+    this.advanceLinkState(StepsState.ChooseEmulator);
+  }
+
+  /** The emulator needs its game before the link mode can start. */
+  protected gameMissing(): boolean {
+    return this.browser && !this.emulatorService.game();
+  }
+
+  private browserDevice(): StatusEmitterAbstract {
+    const adapter = this.emulatorService.linkAdapter;
+    // The page only goes on once the emulator has loaded
+    if (!adapter) throw new Error('The emulator has not loaded.');
+    return new StatusEmitterEmulator(adapter);
   }
 
   private cleanup() {
@@ -125,6 +182,18 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
   }
 
   start() {
+    if (this.browser) {
+      if (this.gameMissing()) return;
+      const device = this.browserDevice();
+      LinkDeviceUtils.tryEnableLinkMode(device)
+        .then(() => this.advanceLinkState(StepsState.Ready))
+        .catch(error => {
+          this.toastService.show(String(error?.message ?? error), 'error', 4000);
+          this.disconnect();
+        })
+        .finally(() => device.destroy());
+      return;
+    }
     LinkDeviceUtils.tryEnableLinkMode(this.statusEmitterWebsocket!)
       .then(() => {
         this.advanceLinkState(StepsState.Ready);
@@ -137,6 +206,11 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
   }
 
   disconnect(): void {
+    if (this.browser) {
+      this.emulatorService.linkAdapter?.command(new CancelCommand());
+      this.sessionPanel.leaveSession();
+      return;
+    }
     this.statusEmitterWebsocket?.destroy();
   }
 }

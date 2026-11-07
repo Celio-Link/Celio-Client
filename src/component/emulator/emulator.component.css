@@ -1,0 +1,258 @@
+:host {
+  display: block;
+}
+
+.emu-drop {
+  outline: 3px dashed var(--color-primary);
+  outline-offset: 4px;
+}
+
+.emu-game {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.emu-screen {
+  width: 100%;
+}
+
+.emu-root:not(.emu-full) .emu-game {
+  margin-inline: auto;
+}
+
+/* Beside the page's steps: as large as the window's height leaves room for, with the buttons below */
+@media (pointer: fine) {
+  .emu-root:not(.emu-full) .emu-game {
+    max-width: min(100%, calc((100dvh - 16rem) * 1.5));
+  }
+}
+
+@media (pointer: coarse) {
+  .emu-root:not(.emu-full) .emu-game {
+    max-width: 720px;
+  }
+}
+
+.emu-screen canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 2;
+  image-rendering: pixelated;
+  background: #000;
+  border-radius: 0.5rem;
+}
+
+.emu-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* The page's button colors don't change for disabled buttons */
+.emu-toolbar .btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.emu-dot {
+  display: inline-block;
+  width: 0.6rem;
+  height: 0.6rem;
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+/* Touch controls only where the screen is touched */
+.emu-touch {
+  display: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+@media (pointer: coarse) {
+  .emu-touch {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .emu-hint {
+    display: none;
+  }
+}
+
+.emu-key {
+  display: grid;
+  place-items: center;
+  font-family: 'Gen3', sans-serif;
+  font-size: 1.5rem;
+  color: #fff;
+  background: #3b3f52;
+  border-radius: 0.5rem;
+}
+
+.emu-key.pressed {
+  background: #6b73d6;
+}
+
+.emu-shoulders,
+.emu-menu {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.emu-shoulders .emu-key {
+  width: 30%;
+  height: 2.5rem;
+}
+
+.emu-menu {
+  justify-content: center;
+}
+
+.emu-pill {
+  width: 6.5rem;
+  height: 2rem;
+  font-size: 1.1rem;
+  border-radius: 1rem;
+}
+
+.emu-pad {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.emu-dpad {
+  display: grid;
+  grid-template-columns: repeat(3, clamp(2.6rem, 13vw, 3.6rem));
+  grid-template-rows: repeat(3, clamp(2.6rem, 13vw, 3.6rem));
+}
+
+.emu-up { grid-area: 1 / 2; }
+.emu-left { grid-area: 2 / 1; }
+.emu-right { grid-area: 2 / 3; }
+.emu-down { grid-area: 3 / 2; }
+
+.emu-ab {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.emu-ab .emu-key:last-child {
+  margin-bottom: 2.5rem;
+}
+
+.emu-round {
+  width: clamp(3.2rem, 16vw, 4.4rem);
+  height: clamp(3.2rem, 16vw, 4.4rem);
+  border-radius: 50%;
+}
+
+/* Full screen: the picture as large as it fits, the buttons below */
+.emu-full {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+}
+
+.emu-full .emu-game {
+  width: 100%;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+.emu-full .emu-screen {
+  max-width: min(100%, calc((100vh - 5rem) * 1.5));
+}
+
+.emu-full .emu-hint {
+  display: none;
+}
+
+@media (pointer: coarse) {
+  .emu-full .emu-screen {
+    max-width: min(100%, calc((100vh - 22rem) * 1.5));
+  }
+
+  .emu-full .emu-touch {
+    width: 100%;
+    max-width: 32rem;
+  }
+}
+
+/* Full screen held sideways: the picture as tall as it fits, the buttons either side of it as on a GBA */
+@media (pointer: coarse) and (orientation: landscape) {
+  .emu-full .emu-screen {
+    max-width: min(calc(100vw - 21rem), calc((100dvh - 4rem) * 1.5));
+  }
+
+  .emu-full .emu-touch {
+    position: fixed;
+    inset: 0.75rem;
+    width: auto;
+    max-width: none;
+    display: block;
+    pointer-events: none;
+  }
+
+  .emu-full .emu-touch .emu-key {
+    pointer-events: auto;
+  }
+
+  .emu-full .emu-shoulders,
+  .emu-full .emu-pad,
+  .emu-full .emu-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .emu-full .emu-shoulders {
+    top: 0;
+  }
+
+  .emu-full .emu-pad {
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .emu-full .emu-menu {
+    bottom: 0;
+  }
+
+  .emu-full .emu-shoulders .emu-key {
+    width: 8rem;
+  }
+
+  .emu-full .emu-dpad {
+    grid-template-columns: repeat(3, 2.8rem);
+    grid-template-rows: repeat(3, 2.8rem);
+  }
+
+  .emu-full .emu-round {
+    width: 3.6rem;
+    height: 3.6rem;
+  }
+
+  .emu-full .emu-ab .emu-key:last-child {
+    margin-bottom: 1.5rem;
+  }
+
+  /* Under the picture only what playing needs */
+  .emu-full .emu-toolbar > :not(.emu-full-keep) {
+    display: none;
+  }
+}
