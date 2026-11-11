@@ -7,7 +7,8 @@
  */
 import {Observable, Subject} from 'rxjs';
 import {Command, CommandType, DATA_ARRAY_LENGTH, DataArray, LinkMode, LinkStatus, PlayerSettingsCommand, SetModeCommand} from '../../shared/linkExchange/common';
-import {GbaLinkPort, LinkRole} from './gbaLinkPort';
+import {GbaLinkPort, LinkRole, TRANSFER_CYCLES} from './gbaLinkPort';
+import {LinkModeAdapter} from './linkAdapter';
 import {
   COMMAND_WORDS, LINK_MASTER_HANDSHAKE, LINK_SLAVE_HANDSHAKE, NextTransmit, PacketLayer, SEAT_BLOCK_SIZE, SeatQueues,
   TIMING_BETWEEN_COMMANDS, TIMING_COMMAND_BYTES, TIMING_HANDSHAKE
@@ -32,13 +33,11 @@ const DISABLE_TIMEOUT_MS = 100;
  */
 const FRAME_CYCLES = 280896;
 const COMMAND_GAP_CYCLES = 197 * 64;
-/** GBA cycles a transfer of 1-4 players takes at 115200 bps, as the emulator times it. */
-const TRANSFER_CYCLES = [0, 3194, 6075, 8973, 11863];
 
 type ModuleState = 'idle' | 'awaitPlayerSettings' | 'running';
 type SectionPhase = 'awaitGbaHandshake' | 'awaitStartHandshake' | 'awaitConnect' | 'linked';
 
-export class OnlineLinkAdapter {
+export class OnlineLinkAdapter implements LinkModeAdapter {
   private readonly statusSubject = new Subject<LinkStatus>();
   private readonly dataSubject = new Subject<DataArray>();
   readonly status$: Observable<LinkStatus> = this.statusSubject.asObservable();
@@ -52,9 +51,7 @@ export class OnlineLinkAdapter {
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private outbox: (() => void)[] = [];
 
-  constructor(private readonly port: GbaLinkPort) {
-    port.setTransferHandler(rx => this.section?.transferDone(rx));
-  }
+  constructor(private readonly port: GbaLinkPort) {}
 
   /** True while the online mode runs, from SetMode until it closes. */
   get active(): boolean {
@@ -70,6 +67,7 @@ export class OnlineLinkAdapter {
       case CommandType.SetMode:
         if ((command as SetModeCommand).mode !== LinkMode.onlineLink) return false;
         this.stop();
+        this.port.setTransferHandler(rx => this.section?.transferDone(rx));
         this.state = 'awaitPlayerSettings';
         this.emitStatus(LinkStatus.DeviceReady);
         this.emitStatus(LinkStatus.AwaitPlayerSettings);

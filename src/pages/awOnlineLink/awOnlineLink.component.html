@@ -1,7 +1,7 @@
 <div class="flex w-full flex-col">
   <ul class="steps w-full steps-horizontal overflow-x-auto">
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect<span class="hidden sm:inline"> Device</span></li>
-    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Select<span class="hidden sm:inline"> Game</span></li>
+    <li *ngIf="device !== 'emulator'" class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Select<span class="hidden sm:inline"> Game</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Join<span class="hidden sm:inline"> Session</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait<span class="hidden sm:inline"> for Partner</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Start<span class="hidden sm:inline"> Link Mode</span></li>
@@ -10,48 +10,70 @@
 
   <div class="divider"></div>
 
-  <celio-connection-panel [active]="isCurrentlyIn(StepsState.ConnectingCelioDevice)"></celio-connection-panel>
+  <div [ngClass]="device === 'emulator' ? 'grid gap-6 items-start lg:grid-cols-[minmax(0,11fr)_minmax(20rem,9fr)]' : ''">
+    <celio-emulator *ngIf="device === 'emulator'" series="advanceWars"
+                    [linked]="hasReached(StepsState.Ready)"
+                    (closed)="emulatorClosed()"></celio-emulator>
 
-  <div class="divider"></div>
+    <div class="min-w-0">
+      <ng-container *ngIf="device !== 'emulator'">
+        <celio-connection-panel [active]="isCurrentlyIn(StepsState.ConnectingCelioDevice)" [offerEmulator]="true"
+                                (next)="usbConnected()" (useEmulator)="useEmulator()"></celio-connection-panel>
 
-  <div [class.opacity-100]="hasReached(StepsState.SelectGame)" class="transition-opacity opacity-0 duration-500 ease-in-out">
-    <div class="box relative">
-      <div *ngIf="isCurrentlyIn(StepsState.SelectGame)" class="flex flex-col sm:flex-row w-full min-h-[5rem] gap-2 sm:gap-0">
-        <div class="card rounded-box grid grow place-items-center py-2">
-          <button (click)="selectAwVariant(1)" class="btn">Advance Wars</button>
+        <div class="divider"></div>
+
+        <div [class.opacity-100]="hasReached(StepsState.SelectGame)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+          <div class="box relative">
+            <div *ngIf="isCurrentlyIn(StepsState.SelectGame)" class="flex flex-col sm:flex-row w-full min-h-[5rem] gap-2 sm:gap-0">
+              <div class="card rounded-box grid grow place-items-center py-2">
+                <button (click)="selectAwVariant(1)" class="btn">Advance Wars</button>
+              </div>
+              <div class="divider sm:divider-horizontal"><div class="font-Gen3 text-4xl">OR</div></div>
+              <div class="card rounded-box grid grow place-items-center py-2">
+                <button (click)="selectAwVariant(2)" class="btn">Advance Wars 2</button>
+              </div>
+            </div>
+            <div *ngIf="hasReached(StepsState.JoiningSession)" class="pb-10 sm:pb-0">
+              <button (click)="resetAwVariant()" class="btn btn-sm text-2xl absolute bottom-3 right-2">
+                Change Game
+              </button>
+              <div class="font-Gen3 text-4xl">
+                Selected Game: <br>
+                {{ awVariant === 2 ? 'Advance Wars 2' : 'Advance Wars' }}
+              </div>
+              <p class="font-Gen3 text-2xl mt-2 sm:pr-44" [innerHTML]="preStartInstruction"></p>
+            </div>
+          </div>
+          <div class="divider"></div>
         </div>
-        <div class="divider sm:divider-horizontal"><div class="font-Gen3 text-4xl">OR</div></div>
-        <div class="card rounded-box grid grow place-items-center py-2">
-          <button (click)="selectAwVariant(2)" class="btn">Advance Wars 2</button>
+      </ng-container>
+
+      <celio-session-panel [active]="hasReached(StepsState.JoiningSession)"></celio-session-panel>
+
+      <div *ngIf="!(device === 'emulator' && hasReached(StepsState.Ready))" [class.opacity-100]="hasReached(StepsState.SettingLinkMode)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+        <div class="box relative">
+          <div class="flex w-full h-[5rem]">
+            <div class="card rounded-box grid h-20 grow place-items-center">
+              <button (click)="start()" class="btn btn-lg" [disabled]="!isCurrentlyIn(StepsState.SettingLinkMode) || gameMissing()">Start</button>
+              <p *ngIf="isCurrentlyIn(StepsState.SettingLinkMode) && gameMissing()" class="font-Gen3 text-xl">Start your game first.</p>
+            </div>
+            <img *ngIf="isCurrentlyIn(StepsState.SettingLinkMode)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
+          </div>
         </div>
       </div>
-      <div *ngIf="hasReached(StepsState.JoiningSession)" class="pb-10 sm:pb-0">
-        <button (click)="resetAwVariant()" class="btn btn-sm text-2xl absolute bottom-3 right-2">
-          Change Game
-        </button>
-        <div class="font-Gen3 text-4xl">
-          Selected Game: <br>
-          {{ awVariant === 2 ? 'Advance Wars 2' : 'Advance Wars' }}
+
+      <div *ngIf="device === 'emulator' && hasReached(StepsState.Ready)" class="box relative @container flex flex-col gap-2">
+        <p class="font-Gen3 text-xl @xs:text-2xl @lg:text-3xl">
+          Link Mode is ready. In the game, choose Link Mode, then Multi-Pak. Once everyone is listed, player 1 presses START.
+        </p>
+        <div>
+          <button (click)="disconnectCelioDevice()" class="btn btn-sm @xs:btn-md @lg:btn-lg btn-dash btn-error text-xl @lg:text-2xl">Disconnect</button>
         </div>
       </div>
     </div>
-    <div class="divider"></div>
   </div>
 
-  <celio-session-panel [active]="hasReached(StepsState.JoiningSession)"></celio-session-panel>
-
-  <div [class.opacity-100]="hasReached(StepsState.SettingLinkMode)" class="transition-opacity opacity-0 duration-500 ease-in-out">
-    <div class="box relative">
-      <div class="flex w-full h-[5rem]">
-        <div class="card rounded-box grid h-20 grow place-items-center">
-          <button (click)="start()" class="btn btn-lg" [disabled]="!isCurrentlyIn(StepsState.SettingLinkMode)">Start</button>
-        </div>
-        <img *ngIf="isCurrentlyIn(StepsState.SettingLinkMode)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
-      </div>
-    </div>
-  </div>
-
-  <div *ngIf="hasReached(StepsState.Ready)"
+  <div *ngIf="device !== 'emulator' && hasReached(StepsState.Ready)"
        class="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center transition-opacity duration-500 ease-in-out">
 
     <div class="card rounded-box bg-base-100 w-full max-w-screen-xl mx-auto flex flex-col items-center justify-between p-4 sm:p-8 relative">

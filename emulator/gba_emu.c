@@ -34,7 +34,7 @@
 #define RESET_CLOCK_CYCLES 16777
 
 enum LinkRole {
-	LINK_NONE = 0,   /* no link: the game sees a child's SI and nobody clocks */
+	LINK_NONE = 0,   /* no link: the game sees SD low (not every player is ready) and nobody clocks */
 	LINK_PARENT = 1, /* the game is the parent and clocks; the link answers in the other slots */
 	LINK_CHILD = 2,  /* the game is a child; the link clocks as the parent */
 };
@@ -101,7 +101,12 @@ static bool _linkActive(struct GBA* gba) {
 
 /* SIOCNT bits 2-7 as the game reads them in MULTI mode: SI, SD, id, error, busy. */
 static uint16_t _linkStatusBits(void) {
-	uint16_t bits = 0x0008; /* SD high: every player ready */
+	uint16_t bits = 0;
+	/* SD high: every player ready. Without a link it stays low, so a game that picks its role once
+	 * (Advance Wars, when its link screen opens) waits until the link gives it one. */
+	if (port.role != LINK_NONE) {
+		bits |= 0x0008;
+	}
 	if (port.role != LINK_PARENT) {
 		bits |= 0x0004; /* SI high: a child */
 	}

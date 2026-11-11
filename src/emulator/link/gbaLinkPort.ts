@@ -1,7 +1,7 @@
 /** What the GBA online link drives an emulated GBA's link port with (see emulator/gba_emu.c). */
 
 export enum LinkRole {
-  /** No link: the game sees a child's SI and nobody clocks. */
+  /** No link: the game sees that not every player is ready, and nobody clocks. */
   None = 0,
   /** The game is the parent (seat 0) and clocks; the link answers in the other slots. */
   Parent = 1,
@@ -11,6 +11,8 @@ export enum LinkRole {
 
 /** The GBA's clock, which link timings are counted in. */
 export const GBA_CYCLES_PER_SECOND = 16777216;
+/** GBA cycles a transfer of 1-4 players takes at 115200 bps, as the emulator times it. */
+export const TRANSFER_CYCLES = [0, 3194, 6075, 8973, 11863];
 
 export interface GbaLinkPort {
   /** seat: the game's slot as a child (1-3). Stops a transfer under way. */

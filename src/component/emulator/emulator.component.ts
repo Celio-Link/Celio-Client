@@ -1,6 +1,7 @@
-import {Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, Output, ViewChild, computed} from '@angular/core';
+import {Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild, computed} from '@angular/core';
 import {EmulatorService} from '../../services/emulator.service';
 import {ToastService} from '../../services/toast.service';
+import {GameSeries} from '../../emulator/emulatorGame';
 
 /**
  * The emulator in the page: choosing the game and its save, its screen, buttons and touch
@@ -11,7 +12,10 @@ import {ToastService} from '../../services/toast.service';
   templateUrl: './emulator.component.html',
   styleUrl: './emulator.component.css',
 })
-export class EmulatorComponent implements OnDestroy {
+export class EmulatorComponent implements OnInit, OnDestroy {
+
+  /** The games the page links: the emulator takes the ROMs of this series. */
+  @Input() series: GameSeries = 'pokemon';
 
   /** The link mode is running: the game can't be changed, reset, given another save or closed. */
   @Input() linked = false;
@@ -21,7 +25,6 @@ export class EmulatorComponent implements OnDestroy {
   protected fullscreen = false;
   protected dragging = false;
   protected readonly game = computed(() => this.service.game());
-  protected readonly library = computed(() => this.service.library());
 
   private screenCanvas: HTMLCanvasElement | null = null;
   private touchArea: HTMLElement | null = null;
@@ -36,6 +39,15 @@ export class EmulatorComponent implements OnDestroy {
   @ViewChild('touch') set touch(ref: ElementRef<HTMLElement> | undefined) {
     this.touchArea = ref?.nativeElement ?? null;
     this.attach();
+  }
+
+  ngOnInit(): void {
+    this.service.useSeries(this.series);
+  }
+
+  /** The games of the page's series that are kept in this browser. */
+  protected kept() {
+    return this.service.kept(this.series);
   }
 
   private attach(): void {
@@ -70,7 +82,7 @@ export class EmulatorComponent implements OnDestroy {
     if (!files.length) return;
     const romFile = files.find(f => !/\.sav$/i.test(f.name));
     const saveFile = files.find(f => /\.sav$/i.test(f.name));
-    if (romFile && saveFile && await this.service.hasUnsavedProgress(romFile)
+    if (romFile && saveFile && await this.service.hasUnsavedProgress(romFile, this.series)
         && !confirm('This browser keeps progress in this game that you haven\'t downloaded. Play from your save file instead?')) {
       return;
     }
@@ -78,7 +90,7 @@ export class EmulatorComponent implements OnDestroy {
         && !confirm('The game has saved since you last downloaded its save. Load your save file instead?')) {
       return;
     }
-    const result = await this.service.openFiles(files);
+    const result = await this.service.openFiles(files, this.series);
     if (!result.ok) this.toast.show(result.message, 'error', 5000);
   }
 

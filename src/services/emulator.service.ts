@@ -2,12 +2,11 @@ import {Injectable, NgZone, signal} from '@angular/core';
 import {GbaEmulator} from '../emulator/gbaEmulator';
 import {EmulatorInput} from '../emulator/emulatorInput';
 import {GameStore, StoredGame} from '../emulator/gameStore';
-import {identifyRom, knownRom, PokemonRom, romTitle} from '../emulator/pokemonRom';
-import {OnlineLinkAdapter} from '../emulator/link/onlineLinkAdapter';
+import {EmulatorGame, GameSeries, identifyGame, knownGame} from '../emulator/emulatorGame';
+import {LinkAdapter} from '../emulator/link/linkAdapter';
 
 const EMULATOR_URL = 'emulator/';
 const MUTED_KEY = 'celio-emulator-muted';
-const GBA_SAVE_SIZE = 0x20000;
 
 export type OpenResult =
   | { ok: true }
@@ -15,13 +14,13 @@ export type OpenResult =
 
 /**
  * The Game Boy Advance emulator that plays in the page: the running game, the games kept in
- * this browser, and the GBA online link the game is linked through. It stays loaded while the
+ * this browser, and the link adapter the game is linked through. It stays loaded while the
  * player moves between pages; the game only runs while its screen is shown.
  */
 @Injectable({ providedIn: 'root' })
 export class EmulatorService {
   /** The game that is loaded, null when none is. */
-  readonly game = signal<PokemonRom | null>(null);
+  readonly game = signal<EmulatorGame | null>(null);
   /** The game saved since its save was last downloaded. */
   readonly unsaved = signal(false);
   readonly muted = signal(readMuted());
@@ -31,7 +30,7 @@ export class EmulatorService {
 
   private emulator: GbaEmulator | null = null;
   private emulatorLoad: Promise<GbaEmulator> | null = null;
-  private adapter: OnlineLinkAdapter | null = null;
+  private adapter: LinkAdapter | null = null;
   private input: EmulatorInput | null = null;
   private readonly store = new GameStore();
   private gameId: string | null = null;
@@ -49,8 +48,8 @@ export class EmulatorService {
     window.addEventListener('pagehide', keepSave);
   }
 
-  /** The GBA online link of the emulated GBA, for the link session. */
-  get linkAdapter(): OnlineLinkAdapter | null {
+  /** The link adapter of the emulated GBA, for the link session. */
+  get linkAdapter(): LinkAdapter | null {
     return this.adapter;
   }
 
@@ -74,26 +73,37 @@ export class EmulatorService {
   }
 
   /**
-   * Plays the chosen files: a ROM, optionally with its save. A save on its own replaces
-   * the save of the loaded game. Call from a user gesture (it starts the sound).
+   * Plays the chosen files: a ROM of the page's series, optionally with its save. A save on its
+   * own replaces the save of the loaded game. Call from a user gesture (it starts the sound).
    */
-  openFiles(files: File[]): Promise<OpenResult> {
-    return this.exclusive(() => this.open(files));
+  openFiles(files: File[], series: GameSeries): Promise<OpenResult> {
+    return this.exclusive(() => this.open(files, series));
   }
 
   /** The kept game a ROM file belongs to has progress that was never downloaded. */
-  async hasUnsavedProgress(romFile: File): Promise<boolean> {
-    const check = identifyRom(new Uint8Array(await romFile.arrayBuffer()));
-    return check.ok && this.library().some(game => game.id === check.rom.crc32 && game.unsaved);
+  async hasUnsavedProgress(romFile: File, series: GameSeries): Promise<boolean> {
+    const check = identifyGame(new Uint8Array(await romFile.arrayBuffer()), series);
+    return check.ok && this.library().some(game => game.id === check.game.crc32 && game.unsaved);
+  }
+
+  /** The kept games of a series. */
+  kept(series: GameSeries): StoredGame[] {
+    return this.library().filter(game => knownGame(game.id)?.series === series);
+  }
+
+  /** A page of a series opened: a loaded game of the other series is closed (its save stays kept). */
+  useSeries(series: GameSeries): void {
+    const game = this.game();
+    if (game && game.series !== series && !this.linkActive) this.closeGame();
   }
 
   /** Plays a game kept in this browser. */
   playStored(id: string): Promise<OpenResult> {
     return this.exclusive(async () => {
       const stored = await this.store.get(id);
-      const rom = stored ? knownRom(stored.id) : undefined;
-      if (!stored || !rom) return { ok: false, message: 'That game isn\'t kept in this browser any more.' };
-      return this.start(stored.rom, rom, stored.save, stored.unsaved);
+      const game = stored ? knownGame(stored.id) : undefined;
+      if (!stored || !game) return { ok: false, message: 'That game isn\'t kept in this browser any more.' };
+      return this.start(stored.rom, game, stored.save, stored.unsaved);
     });
   }
 
@@ -113,7 +123,7 @@ export class EmulatorService {
     }
   }
 
-  private async open(files: File[]): Promise<OpenResult> {
+  private async open(files: File[], series: GameSeries): Promise<OpenResult> {
     const romFile = files.find(f => !/\.sav$/i.test(f.name));
     const saveFile = files.find(f => /\.sav$/i.test(f.name));
     if (!romFile) {
@@ -121,30 +131,23 @@ export class EmulatorService {
       return { ok: false, message: 'Choose your game\'s ROM (.gba), and its save (.sav) if you have one.' };
     }
     const rom = new Uint8Array(await romFile.arrayBuffer());
-    const check = identifyRom(rom);
-    if (!check.ok) {
-      return {
-        ok: false,
-        message: check.reason === 'unknownDump'
-          ? `This Pokémon ${check.game} ROM doesn't match a cartridge dump. Use a clean dump of your own cartridge.`
-          : 'This isn\'t a Pokémon Ruby, Sapphire, Emerald, FireRed or LeafGreen ROM.',
-      };
-    }
+    const check = identifyGame(rom, series);
+    if (!check.ok) return check;
     let save: Uint8Array | null = null;
     let unsaved = false;
     if (saveFile) {
       save = new Uint8Array(await saveFile.arrayBuffer());
-      if (save.length < GBA_SAVE_SIZE) return { ok: false, message: `${saveFile.name} isn't a save of this game.` };
+      if (save.length < check.game.saveSize) return { ok: false, message: `${saveFile.name} isn't a save of this game.` };
     } else {
       // Playing a kept game again from its ROM continues its save
-      const stored = await this.store.get(check.rom.crc32);
+      const stored = await this.store.get(check.game.crc32);
       save = stored?.save ?? null;
       unsaved = stored?.unsaved ?? false;
     }
-    return this.start(rom, check.rom, save, unsaved);
+    return this.start(rom, check.game, save, unsaved);
   }
 
-  private async start(rom: Uint8Array, info: PokemonRom, save: Uint8Array | null, unsaved: boolean): Promise<OpenResult> {
+  private async start(rom: Uint8Array, info: EmulatorGame, save: Uint8Array | null, unsaved: boolean): Promise<OpenResult> {
     if (this.linkActive) return { ok: false, message: 'Disconnect the link before changing the game.' };
     let emulator: GbaEmulator;
     try {
@@ -161,7 +164,7 @@ export class EmulatorService {
     this.unsaved.set(unsaved);
     // Its screen is already up when one game replaces another
     if (this.input) this.resume();
-    await this.store.put({ id: info.crc32, title: romTitle(info), name: info.name, rom, save: save ?? emulator.getSave(), unsaved });
+    await this.store.put({ id: info.crc32, title: info.title, name: info.name, rom, save: save ?? emulator.getSave(), unsaved });
     await this.refreshLibrary();
     return { ok: true };
   }
@@ -170,10 +173,11 @@ export class EmulatorService {
   private async loadSave(file: File): Promise<OpenResult> {
     const id = this.gameId;
     const rom = this.rom;
-    if (!id || !rom || !this.emulator) return { ok: false, message: 'Start a game first.' };
+    const game = this.game();
+    if (!id || !rom || !game || !this.emulator) return { ok: false, message: 'Start a game first.' };
     if (this.linkActive) return { ok: false, message: 'Disconnect the link before loading a save.' };
     const save = new Uint8Array(await file.arrayBuffer());
-    if (save.length < GBA_SAVE_SIZE) return { ok: false, message: `${file.name} isn't a save of this game.` };
+    if (save.length < game.saveSize) return { ok: false, message: `${file.name} isn't a save of this game.` };
     if (this.gameId !== id) return { ok: false, message: 'Start a game first.' };
     this.emulator.stop();
     if (!this.emulator.load(rom, save)) return { ok: false, message: 'The emulator couldn\'t start the game with this save.' };
@@ -291,7 +295,7 @@ export class EmulatorService {
       }));
     };
     this.emulator = emulator;
-    this.adapter = new OnlineLinkAdapter(emulator.linkPort());
+    this.adapter = new LinkAdapter(emulator.linkPort());
     return emulator;
   }
 }
