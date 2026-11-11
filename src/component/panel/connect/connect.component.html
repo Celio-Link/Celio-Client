@@ -8,6 +8,7 @@
         </button>
         <button *ngIf="offerEmulator" (click)="useEmulator.emit()" class="btn">Play in Browser</button>
       </div>
+      <p *ngIf="firmwareError" class="font-Gen3 text-2xl text-error text-center px-8 mt-2">{{ firmwareError }}</p>
     </div>
 
     <div *ngIf="!active" class="font-Gen3 text-4xl">

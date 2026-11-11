@@ -61,11 +61,6 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   private disconnectSubscription: Subscription;
 
-  // From firmware 2.2.9 on the Advance Wars mode takes two to four players and every packet
-  // names its sender's seat, as the emulator's packets do. Older builds speak another format,
-  // so they are turned away early instead of failing in the game.
-  private static readonly awMinFirmware = { major: 2, minor: 2, patch: 9 };
-
   constructor(cd: ChangeDetectorRef, private toastService: ToastService, private socket: SocketIOService) {
     super(cd);
     this.stepState = StepsState.ConnectingCelioDevice;
@@ -142,8 +137,7 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
     return this.device === 'emulator' && !this.emulatorService.game()?.advanceWars;
   }
 
-  protected async selectAwVariant(variant: number) {
-    if (!await this.checkAwFirmware()) return;
+  protected selectAwVariant(variant: number) {
     this.awVariant = variant;
     // A game that opens its link menu before the link mode is on doesn't link until it opens the menu again
     this.preStartInstruction = "Connect your Game Boy Advance with the link cable, then press <b>Start</b> on this page "
@@ -157,23 +151,6 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
     this.awVariant = undefined;
     this.sessionPanel.leaveSession();
     this.advanceLinkState(StepsState.SelectGame);
-  }
-
-  private async checkAwFirmware(): Promise<boolean> {
-    const min = AwOnlineLinkComponent.awMinFirmware;
-    const version = await LinkDeviceUtils.getFirmwareVersion(this.linkDeviceService);
-    const ok = version !== undefined && (
-      version.major !== min.major ? version.major > min.major :
-      version.minor !== min.minor ? version.minor > min.minor :
-      version.patch >= min.patch);
-    if (ok) return true;
-
-    const have = version ? `v${version.major}.${version.minor}.${version.patch}` : 'an unknown version';
-    this.toastService.show(
-      `Advance Wars needs firmware v${min.major}.${min.minor}.${min.patch} or newer — this adapter is running ${have}. Update it from the GBLink launcher and reconnect.`,
-      'error', 8000);
-    await this.linkDeviceService.disconnect();
-    return false;
   }
 
   start() {

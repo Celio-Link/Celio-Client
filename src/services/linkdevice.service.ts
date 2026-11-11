@@ -32,10 +32,12 @@ export class LinkDeviceService {
       { vendorId: 0x2fe3, productId: 0x0100 },
       { vendorId: 0x2fe3, productId: 0x00a },
       { vendorId: 0x8086, productId: 0xf8a1 },
+      // Firmware 3.0.0 and newer
+      { vendorId: 0x1209, productId: 0xb011 },
     ],
   };
   readonly serialOptions: SerialPortRequestOptions = {
-    filters: [{ usbVendorId: 0x2fe3 }],
+    filters: [{ usbVendorId: 0x2fe3 }, { usbVendorId: 0x1209, usbProductId: 0xb011 }],
   };
 
   private statusEventSubject = new Subject<LinkStatus>();

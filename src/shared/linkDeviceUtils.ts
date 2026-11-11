@@ -3,6 +3,14 @@ import {StatusEmitterAbstract} from './linkExchange/statusEmitter/statusEmitter.
 import {LinkDeviceService} from '../services/linkdevice.service';
 import {catchError, filter, firstValueFrom, map, of, take, timeout} from 'rxjs';
 
+/** The oldest firmware the client links with: older ones speak another link protocol. */
+export const MIN_FIRMWARE: FirmwareVersion = { major: 3, minor: 0, patch: 0 };
+
+export function firmwareAtLeast(version: FirmwareVersion, min: FirmwareVersion): boolean {
+  if (version.major !== min.major) return version.major > min.major;
+  if (version.minor !== min.minor) return version.minor > min.minor;
+  return version.patch >= min.patch;
+}
 
 export class LinkDeviceUtils {
   static sendCancel(statusEmitter: StatusEmitterAbstract):Promise<void> {
