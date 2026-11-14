@@ -1,8 +1,8 @@
 import { test, expect } from "vitest";
-import { WebSocketService } from "../src/services/websocket.service.js";
+import { SocketIOService } from "../src/services/socketIO.service";
 import { CommandEmitterSocketIO } from '../src/shared/linkExchange/commandEmitter/commandEmitter.socketIO';
 
-class InspectableWebSocketService extends WebSocketService {
+class InspectableWebSocketService extends SocketIOService {
   listenerCount(event: string): number {
     return this.socket.listeners(event).length;
   }

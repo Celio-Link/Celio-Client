@@ -1,6 +1,11 @@
 import {StatusEmitterAbstract} from './statusEmitter.abstract';
-import {CommandType, DataArray, LinkStatus, UInt16} from '../common';
+import {Command, DATA_ARRAY_LENGTH, DataArray, LinkStatus, UInt8} from '../common';
 import {Observable, Subject} from 'rxjs';
+
+interface WsMessage {
+  type: string;
+  body: UInt8[] | string | number;
+}
 
 export class StatusEmitterWebsocket extends StatusEmitterAbstract {
 
@@ -25,12 +30,11 @@ export class StatusEmitterWebsocket extends StatusEmitterAbstract {
         this.socket.onopen = () => {
           console.log("Connected!");
           this.retry = false;
-          this.socket!.binaryType = "arraybuffer";
           resolve();
         };
 
         this.socket.onerror = () => {
-          this.socket?.close(); // ensures onclose fires
+          this.socket?.close();
         };
 
         this.socket.onclose = () => {
@@ -45,28 +49,31 @@ export class StatusEmitterWebsocket extends StatusEmitterAbstract {
         };
 
         this.socket.onmessage = (event) => {
-          if (event.data instanceof ArrayBuffer) {
 
-            const buffer = event.data as ArrayBuffer;
-            const view = new DataView(buffer);
+          let message: WsMessage = JSON.parse(event.data);
 
-            const dataArray = Array.from({ length: 32 }, (_, i) =>
-              view.getUint16(i * 2, false) as UInt16 // false = big-endian
-            ) as DataArray;
+          switch (message.type) {
+            case "data":
+              const buffer = message.body as UInt8[];
 
-            this.dataSubject.next(dataArray);
+              const dataArray = Array.from({ length: DATA_ARRAY_LENGTH }, (_, i) =>
+                buffer[i] as UInt8
+              ) as DataArray;
+
+              this.dataSubject.next(dataArray);
+              break;
+            case "status":
+              this.statusSubject.next(Number(message.body as number) as LinkStatus);
+              break;
+            case "version":
+              if (this.versionRequest && message.body as string == "0.3") {
+                clearTimeout(this.versionRequest.timeout);
+                this.versionRequest.resolve(true);
+                this.versionRequest = undefined;
+              }
+              break;
           }
-          else if (event.data === '0.2') {
-            if (this.versionRequest) {
-              clearTimeout(this.versionRequest.timeout);
-              this.versionRequest.resolve(true);
-              this.versionRequest = undefined;
-            }
-          }
-          else {
-            this.statusSubject.next(Number(event.data) as LinkStatus);
-          }
-        };
+        }
       }
 
       connect();
@@ -93,7 +100,8 @@ export class StatusEmitterWebsocket extends StatusEmitterAbstract {
           resolve(false);
         }, 1000),
       };
-      this.socket!.send("getVersion");
+      let wsMessage: WsMessage = {type: "versionRequest", body: ""}
+      this.socket!.send(JSON.stringify(wsMessage));
     });
   }
 
@@ -101,14 +109,17 @@ export class StatusEmitterWebsocket extends StatusEmitterAbstract {
     return this.closeSubject.asObservable();
   }
 
-  receiveCommand(command: CommandType, args: Uint8Array): Promise<boolean> {
-    if (this.socket?.readyState == this.socket?.OPEN) this.socket?.send(command.toString())
+  receiveCommand(command: Command): Promise<boolean> {
+    if (this.socket?.readyState != this.socket?.OPEN) return Promise.resolve(false);
+    let wsMessage: WsMessage = {type: "command", body: Array.from(command.serialize()) as UInt8[]}
+    this.socket?.send(JSON.stringify(wsMessage));
     return Promise.resolve(true);
   }
 
   receiveData(data: DataArray): Promise<boolean> {
-    const typedArray = new Uint16Array(data);
-    if (this.socket?.readyState == this.socket?.OPEN) this.socket?.send(typedArray)
+    if (this.socket?.readyState != this.socket?.OPEN) return Promise.resolve(false);
+    let wsMessage: WsMessage = {type: "data", body: data}
+    this.socket?.send(JSON.stringify(wsMessage))
     return Promise.resolve(true);
   }
 

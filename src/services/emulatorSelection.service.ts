@@ -3,6 +3,8 @@ import {Injectable} from '@angular/core';
 export enum SupportedEmulators {
   none = 0,
   mGBA = 1,
+  /** The emulator in the page */
+  browser = 2,
 }
 
 @Injectable({  providedIn: 'root',})

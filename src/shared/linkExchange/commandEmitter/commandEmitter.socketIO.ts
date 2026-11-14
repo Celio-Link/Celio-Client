@@ -1,7 +1,7 @@
-import {CommandPacket, DataPacket, StatusPacket} from '../common'
+import {Command, CommandPacket, CommandType, DataPacket, StatusPacket} from '../common'
 import {CommandEmitterAbstract} from './commandEmitter.abstract'
 import {concatMap, Subject, Subscription} from 'rxjs';
-import {WebSocketService} from '../../../services/websocket.service';
+import {SocketIOService} from '../../../services/socketIO.service';
 
 const MAX_UNACKED_DATA: number = 64;
 
@@ -15,7 +15,7 @@ export class CommandEmitterSocketIO extends CommandEmitterAbstract {
   private dataInFlight: number = 0;
   private destroyed: boolean = false;
 
-  constructor(protected websocketService: WebSocketService) {
+  constructor(protected socketIOService: SocketIOService) {
 
     super();
     this.subscriptions.add(
@@ -25,7 +25,7 @@ export class CommandEmitterSocketIO extends CommandEmitterAbstract {
     );
 
     this.subscriptions.add(
-      this.websocketService
+      this.socketIOService
         .fromEventWithAck<DataPacket[]>('deviceData')
         .subscribe(({data, ack}) => {
           ack(true);
@@ -34,17 +34,22 @@ export class CommandEmitterSocketIO extends CommandEmitterAbstract {
     );
 
     this.subscriptions.add(
-      this.websocketService
-        .fromEventWithAck<CommandPacket>('deviceCommand')
+      this.socketIOService
+        .fromEventWithAck<{ uuid: string, command: CommandType, args?: any }>('deviceCommand')
         .subscribe(({data, ack}) => {
           // Duplicates from retries are filtered by uuid in the LinkExchangeSession
           ack(true);
-          this.commandSubject.next(data);
+          const command = Command.fromServer(data.command, data.args);
+          if (!command) {
+            console.warn("Received unknown command: " + data.command);
+            return;
+          }
+          this.commandSubject.next({ uuid: data.uuid, command: command });
         })
     );
 
     this.subscriptions.add(
-      this.websocketService
+      this.socketIOService
         .fromEvent<void>('sessionClose')
         .subscribe(() => {
           console.log("LinkSession: Unsubscribing from events...");
@@ -76,7 +81,7 @@ export class CommandEmitterSocketIO extends CommandEmitterAbstract {
   }
 
   private emitWithRetry(event: string, data: DataPacket[] | StatusPacket): Promise<void> {
-    return this.websocketService.emitWithRetry(event, data)
+    return this.socketIOService.emitWithRetry(event, data)
       .then(
         (acked) => {
           if (acked !== true) console.warn("Server rejected " + event + ": " + JSON.stringify(data));

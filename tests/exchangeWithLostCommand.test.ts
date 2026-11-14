@@ -1,6 +1,6 @@
 import { test, expect } from "vitest";
 import { PlayerSessionService } from "../src/services/playersession.service.js";
-import { WebSocketService } from "../src/services/websocket.service.js";
+import { SocketIOService } from "../src/services/socketIO.service";
 import { LinkExchangeSession } from '../src/shared/linkExchange/linkExchangeSession';
 import { LinkDeviceServiceMock, DataArray } from "./mocks/service/linkdevice.service.mock";
 import { CelioDeviceMock } from './mocks/celioDeviceMock';
@@ -10,7 +10,7 @@ import {StatusEmitterLinkDevice} from '../src/shared/linkExchange/statusEmitter/
 /**
  * Loses the first device command sent by the server, like a command emitted into a dead connection.
  */
-class CommandLosingWebSocketService extends WebSocketService {
+class CommandLosingWebSocketService extends SocketIOService {
 
   constructor() {
     super();
@@ -48,10 +48,10 @@ test("Exchange Data with lost command", {timeout: 10000}, () => new Promise<void
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB);
   const linkDeviceExchangeServiceA = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceA), new StatusEmitterLinkDevice(linkDeviceServiceMockA as any));
   await websocketServiceA.connect();
-  let sessionInfo = await playerSessionServiceA.enterSession()
+  let sessionInfo = await playerSessionServiceA.createSession(2)
   expect(sessionInfo.full).toEqual(false);
 
-  const websocketServiceB = new WebSocketService();
+  const websocketServiceB = new SocketIOService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
   const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA);
   const linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), new StatusEmitterLinkDevice(linkDeviceServiceMockB as any));

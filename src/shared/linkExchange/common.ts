@@ -1,14 +1,19 @@
-export type UInt16 = number & { __uint16: true };
+export type UInt8 = number & { __uint8: true };
 export type DataArray = [
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16,
-  UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16, UInt16
+  UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+  UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+  UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+  UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+  UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+  UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8, UInt8,
+  UInt8, UInt8, UInt8
 ];
+
+export const DATA_ARRAY_LENGTH = 51;
 
 export enum LinkStatus {
   AwaitModeEmulator = 0xFF01,
-  AwaitMode = 0xFF02,
+  AwaitPlayerSettings = 0xFF02,
   HandshakeReceived = 0xFF03,
   HandshakeFinished = 0xFF04,
   LinkConnected = 0xFF05,
@@ -26,8 +31,7 @@ export enum CommandType {
   SetMode = 0x00,
   Cancel = 0x01,
   GetFirmwareInfo = 0x0F,
-  SetModeMaster = 0x10,
-  SetModeSlave = 0x11,
+  PlayerSettings = 0x10,
   StartHandshake= 0x12,
   ConnectLink = 0x13,
 
@@ -45,9 +49,91 @@ export enum LinkMode {
   advanceWars = 0x04
 }
 
+export abstract class Command {
+  abstract readonly type: CommandType;
+
+  abstract serialize(): Uint8Array<ArrayBuffer>;
+
+  /**
+   * Create a command the server sent, the args are the plain object received from the server.
+   * @param type
+   * @param args
+   * @returns The command, or undefined if the server can't send this type.
+   */
+  static fromServer(type: CommandType, args: any): Command | undefined {
+    switch (type) {
+      case CommandType.PlayerSettings:
+        return new PlayerSettingsCommand(args.playerCount, args.playerIndex);
+      case CommandType.StartHandshake:
+        return new StartHandshakeCommand();
+      case CommandType.ConnectLink:
+        return new ConnectLinkCommand();
+      default:
+        return undefined;
+    }
+  }
+}
+
+export class CancelCommand extends Command {
+  readonly type = CommandType.Cancel;
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Uint8Array.of(this.type);
+  }
+}
+
+export class SetModeCommand extends Command {
+  readonly type = CommandType.SetMode;
+
+  constructor(public readonly mode: LinkMode, public readonly variant?: number) {
+    super();
+  }
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    if (this.variant === undefined) return Uint8Array.of(this.type, this.mode);
+    return Uint8Array.of(this.type, this.mode, this.variant);
+  }
+}
+
+export class GetFirmwareInfoCommand extends Command {
+  readonly type = CommandType.GetFirmwareInfo;
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Uint8Array.of(this.type);
+  }
+}
+
+export class PlayerSettingsCommand extends Command {
+  readonly type = CommandType.PlayerSettings;
+
+  constructor(public readonly playerCount: number, public readonly playerIndex: number) {
+    super();
+  }
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Uint8Array.of(this.type, this.playerCount, this.playerIndex);
+  }
+}
+
+export class StartHandshakeCommand extends Command {
+  readonly type = CommandType.StartHandshake;
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Uint8Array.of(this.type);
+  }
+}
+
+export class ConnectLinkCommand extends Command {
+  readonly type = CommandType.ConnectLink;
+
+  serialize(): Uint8Array<ArrayBuffer> {
+    return Uint8Array.of(this.type);
+  }
+}
+
 export interface CommandPacket {
   uuid: string;
-  command: CommandType;
+  command: Command;
 }
 
 export interface StatusPacket {
@@ -64,12 +150,18 @@ export class DataPacket {
     this.data = data;
   }
 
+  // Layout: 3 blocks of 1 uint8 followed by 8 uint16 (little-endian) = 17 bytes each
   private dataToString(): string {
+    const hex = (value: number, digits: number) => "0x" + value.toString(16).padStart(digits, "0").toUpperCase();
     let out = "";
-    for (let i = 0; i < this.data.length; i++) {
-      if (i) out += " ";
-      if (i % 8 == 0) out += "\n";
-      out += "0x" + (this.data[i] & 0xffff).toString(16).padStart(4, "0").toUpperCase();
+    for (let block = 0; block < 3; block++) {
+      const offset = block * 17;
+      out += "\n" + hex(this.data[offset] & 0xff, 2) + " |";
+      for (let i = 0; i < 8; i++) {
+        const lo = this.data[offset + 1 + i * 2] & 0xff;
+        const hi = this.data[offset + 2 + i * 2] & 0xff;
+        out += " " + hex(lo | (hi << 8), 4);
+      }
     }
     return out;
   }

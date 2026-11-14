@@ -1,5 +1,5 @@
 import {Observable, Subject} from 'rxjs';
-import {CommandType, DataArray, LinkStatus} from '../common';
+import {Command, DataArray, LinkStatus} from '../common';
 
 export abstract class StatusEmitterAbstract {
 
@@ -16,7 +16,7 @@ export abstract class StatusEmitterAbstract {
 
   abstract receiveData(data: DataArray): Promise<boolean>;
 
-  abstract receiveCommand(command: CommandType, args: Uint8Array): Promise<boolean>;
+  abstract receiveCommand(command: Command): Promise<boolean>;
 
   abstract destroy(): void;
 }

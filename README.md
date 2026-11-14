@@ -75,6 +75,28 @@ From this point on, players can:
 
 When both players leave the in-game communication room, the session is automatically deleted.
 
+## Play in Browser
+
+You can also play without a Celio-Device. On the Online Emulator Link page, choose
+**"Play in Browser"** as the emulator and then your game's ROM, with its save file if you have
+one. The game runs in the page and links like a Game Boy Advance on a Celio-Device, so players
+in the browser and players on real hardware can share a session.
+
+- It takes clean dumps of your own Ruby, Sapphire, Emerald, FireRed and LeafGreen cartridges.
+- The browser keeps your game and its progress, so you can play again without choosing the
+  files. **"Download save"** saves your progress as a file; a dot on the button shows that the
+  game has saved since your last download.
+- The arrow keys move. X is A, Z is B, A and S are L and R, Enter is Start and Space is
+  Select. Game controllers work too, and phones and tablets show buttons on the screen.
+- You can create or join a session while you choose your game; **"Start"** waits until the
+  game is running.
+- While the link is on, the game can't be changed, reset, given another save or closed.
+  **"Close"** goes back to choosing the emulator.
+- The game in the browser can trade on the Trade Simulation page too, and stays loaded
+  when you switch between the pages.
+- On the Local Emulator Link page, choose **"Play in Browser"** as the emulator to link the
+  game in the browser with the Game Boy Advance on your Celio-Device, without a server.
+
 ---
 
 # Trade Emulation Mode
@@ -83,7 +105,7 @@ Trade Emulation Mode allows users to simulate a trade with Pokémon of their cho
 
 ## How it works
 
-1. Connect the Celio-Device.
+1. Connect the Celio-Device, or press **"Play in Browser"** and choose your game.
 2. Upload up to **6 Pokémon files**.
    - Supported formats:
      - `.pk3`
@@ -108,3 +130,15 @@ To start a local development server:
 
 ```bash
 ng serve
+```
+
+## Staging
+
+`ng build --configuration staging` (or `ng serve --configuration staging`) builds the client
+for the staging server.
+
+## Browser emulator
+
+The emulator in `public/emulator/` is mGBA's Game Boy Advance core built for the web, together
+with `emulator/gba_emu.c`. `emulator/build.sh` rebuilds it; it needs podman. mGBA is under the
+Mozilla Public License 2.0 (`public/emulator/LICENSE-mGBA.txt`).
