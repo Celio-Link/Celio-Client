@@ -59,7 +59,7 @@ export class CelioConnectionStatusComponent {
           }
           const min = `v${MIN_FIRMWARE.major}.${MIN_FIRMWARE.minor}.${MIN_FIRMWARE.patch}`;
           const have = version ? `firmware v${version.major}.${version.minor}.${version.patch}` : 'an older firmware';
-          this.firmwareError = `This adapter runs ${have}. Update it to ${min} or newer from the GBLink launcher, then connect again.`;
+          this.firmwareError = `This adapter runs ${have}. Update it to ${min} or newer, then connect again.`;
           await this.linkDeviceService.disconnect();
         }
       )
