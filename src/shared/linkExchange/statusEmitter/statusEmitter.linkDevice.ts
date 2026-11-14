@@ -1,16 +1,16 @@
 import {StatusEmitterAbstract} from './statusEmitter.abstract';
 import {Subscription} from 'rxjs';
-import {CommandType, DataArray, LinkStatus} from '../common';
+import {Command, DataArray, LinkStatus} from '../common';
 import {LinkDeviceService} from '../../../services/linkdevice.service';
 
 export class StatusEmitterLinkDevice extends StatusEmitterAbstract {
 
   private subscriptions = new Subscription();
 
-  constructor(private linkDeviceServe: LinkDeviceService) {
+  constructor(private linkDeviceService: LinkDeviceService) {
     super();
     this.subscriptions.add(
-      this.linkDeviceServe
+      this.linkDeviceService
         .statusEvents$
         .subscribe((status) => {
           this.statusSubject.next(status)
@@ -18,7 +18,7 @@ export class StatusEmitterLinkDevice extends StatusEmitterAbstract {
     );
 
     this.subscriptions.add(
-      this.linkDeviceServe
+      this.linkDeviceService
         .dataEvents$
         .subscribe((data) => {
           this.dataSubject.next(data)
@@ -27,12 +27,12 @@ export class StatusEmitterLinkDevice extends StatusEmitterAbstract {
 
   }
 
-  receiveCommand(command: CommandType, args: Uint8Array = new Uint8Array(0)): Promise<boolean>  {
-    return this.linkDeviceServe.sendCommand(command, args);
+  receiveCommand(command: Command): Promise<boolean>  {
+    return this.linkDeviceService.sendCommand(command);
   }
 
   receiveData(data: DataArray): Promise<boolean>  {
-    return this.linkDeviceServe.sendData(data)
+    return this.linkDeviceService.sendData(data)
   }
 
   destroy(): void {

@@ -1,6 +1,6 @@
 import {expect, test} from 'vitest';
 import {CommandType, DataArray, LinkDeviceServiceMock} from './mocks/service/linkdevice.service.mock';
-import {WebSocketService} from '../src/services/websocket.service';
+import {SocketIOService} from '../src/services/socketIO.service';
 import {PlayerSessionService} from '../src/services/playersession.service';
 import { LinkExchangeSession } from '../src/shared/linkExchange/linkExchangeSession';
 import {LinkStatus} from '../src/shared/linkExchange/common';
@@ -42,28 +42,34 @@ test("Exchange Data with repeated command packets", () => new Promise<void>(asyn
     if (numberOfExchanges == successfulExchanges) done();
   }, 10)
 
-  const websocketServiceA = new WebSocketService();
+  const websocketServiceA = new SocketIOService();
   const playerSessionServiceA = new PlayerSessionService(websocketServiceA);
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB);
 
   celioDeviceA.onConnectedCallback = () => {
-    expect([CommandType.SetModeMaster, CommandType.SetModeSlave]).toContain(celioDeviceA.commands[0])
-    expect(celioDeviceA.commands.slice(1)).toEqual([CommandType.StartHandshake, CommandType.ConnectLink])
+    // The device that connects first gets no ConnectLink, the other may be linked before it arrives
+    expect(celioDeviceA.commands.slice(0, 2)).toEqual([CommandType.PlayerSettings, CommandType.StartHandshake])
+    expect(celioDeviceA.commands.filter(command => command === CommandType.ConnectLink).length).toBeLessThanOrEqual(1)
+    expect(celioDeviceA.playerCount).toEqual(2)
+    expect([0, 1]).toContain(celioDeviceA.playerIndex)
   }
 
   // Mock sends out packets twice instead of once
   const linkDeviceExchangeServiceA = new LinkDeviceExchangeMockStatusDuplication(new CommandEmitterSocketIO(websocketServiceA), new StatusEmitterLinkDevice(linkDeviceServiceMockA as any));
   await websocketServiceA.connect();
-  let sessionInfo = await playerSessionServiceA.enterSession()
+  let sessionInfo = await playerSessionServiceA.createSession(2)
   expect(sessionInfo.full).toEqual(false);
 
-  const websocketServiceB = new WebSocketService();
+  const websocketServiceB = new SocketIOService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
   const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA);
 
   celioDeviceB.onConnectedCallback = () => {
-    expect([CommandType.SetModeMaster, CommandType.SetModeSlave]).toContain(celioDeviceB.commands[0])
-    expect(celioDeviceB.commands.slice(1)).toEqual([CommandType.StartHandshake, CommandType.ConnectLink])
+    // The device that connects first gets no ConnectLink, the other may be linked before it arrives
+    expect(celioDeviceB.commands.slice(0, 2)).toEqual([CommandType.PlayerSettings, CommandType.StartHandshake])
+    expect(celioDeviceB.commands.filter(command => command === CommandType.ConnectLink).length).toBeLessThanOrEqual(1)
+    expect(celioDeviceB.playerCount).toEqual(2)
+    expect([0, 1]).toContain(celioDeviceB.playerIndex)
   }
 
   const linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), new StatusEmitterLinkDevice(linkDeviceServiceMockB as any));

@@ -30,7 +30,7 @@ export class CelioPageAbstract<StateEnumT> {
 
   @HostListener('document:keydown', ['$event'])
   protected handleKeyboardEvent(event: KeyboardEvent) {
-    if (environment.production) return;
+    if (environment.production || event.defaultPrevented) return;
 
     if (event.key === 'ArrowUp') {
       // @ts-ignore

@@ -1,7 +1,7 @@
 import {Component, EventEmitter, Input, Output, Pipe} from '@angular/core';
 import {NgIf} from '@angular/common';
 import {PlayerSessionService} from '../../../services/playersession.service';
-import {WebSocketService} from '../../../services/websocket.service';
+import {SocketIOService} from '../../../services/socketIO.service';
 import {Subscription} from 'rxjs';
 import {LinkExchangeSession} from '../../../shared/linkExchange/linkExchangeSession';
 import {ToastService} from '../../../services/toast.service';
@@ -30,21 +30,22 @@ export class CelioSessionComponent {
   private linkSessionCloseSubscription: Subscription
 
   protected sessionId: string | undefined = "";
-  protected joinSessionId = "";
+  protected joinSessionId: string = "";
+  protected playerNumber: number = 2;
   protected state: SessionState = SessionState.Start;
 
   @Input() active = false;
   @Output() sessionStateChange = new EventEmitter<SessionState>();
   @Output() createSessionEvent = new EventEmitter<void>();
 
-  constructor(private playerSessionService: PlayerSessionService, private socket: WebSocketService, private toastService: ToastService) {
+  constructor(private playerSessionService: PlayerSessionService, private socket: SocketIOService, private toastService: ToastService) {
 
-    this.partnerSubscription = this.playerSessionService.partnerEvents$.subscribe(partnerConnected => {
-      if (partnerConnected) {
+    this.partnerSubscription = this.playerSessionService.partnerEvents$.subscribe(partnersReady => {
+      if (partnersReady) {
         this.updateSessionState(SessionState.Commit);
       }
       else {
-        this.toastService.show("Partner has disconnected");
+        this.toastService.show("A player has disconnected");
         this.updateSessionState(SessionState.Waiting);
       }
     });
@@ -73,11 +74,23 @@ export class CelioSessionComponent {
     if (state === SessionState.Start) {
       this.joinSessionId = "";
     }
+    console.log(state)
     this.sessionStateChange.emit(state);
   }
 
   onJoinSessionIdInput(event: Event) {
     this.joinSessionId = (event.target as HTMLInputElement).value;
+  }
+
+  onPlayerNumberInput(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const playerNumber: number = input.valueAsNumber;
+    if (isNaN(playerNumber) || playerNumber <= 1 || playerNumber >= 5) {
+      input.value = "";
+      this.playerNumber = 2;
+      return;
+    }
+    this.playerNumber = playerNumber;
   }
 
   joinSession() {
@@ -86,19 +99,23 @@ export class CelioSessionComponent {
     this.enterSession(id);
   }
 
-  async enterSession(userSessionId?: string) {
+  createSession() {
+    this.startSession(() => this.playerSessionService.createSession(this.playerNumber));
+  }
+
+  enterSession(userSessionId: string) {
+    this.startSession(() => this.playerSessionService.enterSession(userSessionId));
+  }
+
+  private async startSession(sessionRequest: () => Promise<{ id: string }>) {
     if (!await this.socket.connect()) {
       this.toastService.show("Could not connect to Server", 'error', 4000)
       console.error("Could not connect to Server");
       return;
     }
-    this.playerSessionService.enterSession(userSessionId).then(session => {
+    this.updateSessionState(SessionState.Waiting);
+    sessionRequest().then(session => {
       this.createSessionEvent.emit();
-      if (userSessionId) {
-        this.updateSessionState(SessionState.Commit);
-      } else {
-        this.updateSessionState(SessionState.Waiting);
-      }
       this.sessionId = session.id;
     }).catch(error => {
       this.toastService.show(error, 'error', 4000)

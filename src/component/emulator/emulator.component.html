@@ -1,0 +1,87 @@
+<div class="emu-root" [class.emu-full]="fullscreen">
+  @if (!game()) {
+    <div class="box relative" [class.emu-drop]="dragging"
+         (dragover)="onDragOver($event)" (dragleave)="dragging = false" (drop)="onDrop($event)">
+      <div class="flex flex-col gap-3 py-2">
+        <p class="font-Gen3 text-3xl sm:text-4xl">Play in your browser</p>
+        <p class="font-Gen3 text-2xl">
+          Load {{ series === 'advanceWars' ? 'Advance Wars or Advance Wars 2' : 'Pokémon Ruby, Sapphire, Emerald, FireRed or LeafGreen' }},
+          dumped from your own cartridge, together with its save file if you have one. You can also drop the files here.
+        </p>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="btn" (click)="files.click()" [disabled]="service.starting()">
+            {{ service.starting() ? 'Starting...' : 'Choose ROM and save' }}
+          </button>
+          <button type="button" class="btn" (click)="closeEmulator()">Close</button>
+          <input #files type="file" accept=".gba,.sav" multiple hidden (change)="onFiles($event)">
+        </div>
+        @if (kept().length) {
+          <p class="font-Gen3 text-2xl mt-2">Kept in this browser</p>
+          <ul class="flex flex-col gap-2">
+            @for (stored of kept(); track stored.id) {
+              <li class="flex items-center gap-2">
+                <div class="grow min-w-0">
+                  <div class="font-Gen3 text-2xl truncate">{{ stored.title }}</div>
+                  @if (stored.unsaved) {
+                    <span class="badge badge-warning font-Gen3 text-lg">Save not downloaded</span>
+                  }
+                </div>
+                <button type="button" class="btn btn-sm text-2xl shrink-0" (click)="play(stored.id)" [disabled]="service.starting()">Play</button>
+                <button type="button" class="btn btn-sm text-2xl shrink-0" (click)="remove(stored.id, stored.unsaved)">Remove</button>
+              </li>
+            }
+          </ul>
+        }
+      </div>
+    </div>
+  } @else {
+    <div class="emu-game">
+      <div class="emu-screen">
+        <canvas #screen width="240" height="160" aria-label="Game screen"></canvas>
+      </div>
+
+      <div class="emu-touch" #touch aria-hidden="true">
+        <div class="emu-shoulders">
+          <div class="emu-key" data-key="L">L</div>
+          <div class="emu-key" data-key="R">R</div>
+        </div>
+        <div class="emu-pad">
+          <div class="emu-dpad">
+            <div class="emu-key emu-up" data-key="UP">▲</div>
+            <div class="emu-key emu-left" data-key="LEFT">◀</div>
+            <div class="emu-key emu-right" data-key="RIGHT">▶</div>
+            <div class="emu-key emu-down" data-key="DOWN">▼</div>
+          </div>
+          <div class="emu-ab">
+            <div class="emu-key emu-round" data-key="B">B</div>
+            <div class="emu-key emu-round" data-key="A">A</div>
+          </div>
+        </div>
+        <div class="emu-menu">
+          <div class="emu-key emu-pill" data-key="SELECT">SELECT</div>
+          <div class="emu-key emu-pill" data-key="START">START</div>
+        </div>
+      </div>
+
+      <div class="emu-toolbar">
+        <button type="button" class="btn btn-sm text-xl emu-full-keep" (click)="toggleSound()">{{ service.muted() ? 'Sound off' : 'Sound on' }}</button>
+        <button type="button" class="btn btn-sm text-xl emu-full-keep" (click)="toggleFullscreen()">{{ fullscreen ? 'Exit full screen' : 'Full screen' }}</button>
+        <button type="button" class="btn btn-sm text-xl" (click)="service.downloadSave()">
+          Download save
+          @if (service.unsaved()) {
+            <span class="emu-dot" title="The game saved since you last downloaded its save"></span>
+          }
+        </button>
+        <button type="button" class="btn btn-sm text-xl" (click)="saveFile.click()" [disabled]="linked || service.starting()">Load save</button>
+        <input #saveFile type="file" accept=".sav" hidden (change)="onFiles($event)">
+        <button type="button" class="btn btn-sm text-xl" (click)="reset()" [disabled]="linked">Reset</button>
+        <button type="button" class="btn btn-sm text-xl" (click)="changeGame()" [disabled]="linked">Change game</button>
+        <button type="button" class="btn btn-sm text-xl" (click)="closeEmulator()" [disabled]="linked">Close</button>
+      </div>
+
+      <p class="emu-hint font-Gen3 text-xl">
+        Arrow keys move. X is A, Z is B, A and S are L and R, Enter is Start and Space is Select.
+      </p>
+    </div>
+  }
+</div>

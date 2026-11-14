@@ -1,6 +1,6 @@
 import { test, expect } from "vitest";
 import { PlayerSessionService } from "../src/services/playersession.service.js";
-import { WebSocketService } from "../src/services/websocket.service.js";
+import { SocketIOService } from "../src/services/socketIO.service";
 import { LinkExchangeSession } from '../src/shared/linkExchange/linkExchangeSession';
 import { LinkDeviceServiceMock, DataArray } from "./mocks/service/linkdevice.service.mock";
 import { CelioDeviceMock } from './mocks/celioDeviceMock';
@@ -25,16 +25,16 @@ test("Exchange Data after partner was replaced", {timeout: 10000}, () => new Pro
     if (numberOfExchanges == successfulExchanges) done();
   }, 10)
 
-  const websocketServiceA = new WebSocketService();
+  const websocketServiceA = new SocketIOService();
   const playerSessionServiceA = new PlayerSessionService(websocketServiceA);
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceC);
   const linkDeviceExchangeServiceA = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceA), new StatusEmitterLinkDevice(linkDeviceServiceMockA as any));
   await websocketServiceA.connect();
-  let sessionInfo = await playerSessionServiceA.enterSession()
+  let sessionInfo = await playerSessionServiceA.createSession(2)
   expect(sessionInfo.full).toEqual(false);
 
   // B joins and leaves again before any device status was sent
-  const websocketServiceB = new WebSocketService();
+  const websocketServiceB = new SocketIOService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
   await websocketServiceB.connect();
   const partnerLeft = firstValueFrom(playerSessionServiceA.partnerEvents$.pipe(filter(connected => !connected)));
@@ -43,7 +43,7 @@ test("Exchange Data after partner was replaced", {timeout: 10000}, () => new Pro
   await partnerLeft;
 
   // C takes the free spot and links with A
-  const websocketServiceC = new WebSocketService();
+  const websocketServiceC = new SocketIOService();
   const playerSessionServiceC = new PlayerSessionService(websocketServiceC);
   const linkDeviceServiceMockC = new LinkDeviceServiceMock(celioDeviceC, celioDeviceA);
   const linkDeviceExchangeServiceC = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceC), new StatusEmitterLinkDevice(linkDeviceServiceMockC as any));

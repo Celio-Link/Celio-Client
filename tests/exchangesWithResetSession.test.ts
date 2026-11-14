@@ -1,6 +1,6 @@
 import { test, expect } from "vitest";
 import { PlayerSessionService } from "../src/services/playersession.service.js";
-import { WebSocketService } from "../src/services/websocket.service.js";
+import { SocketIOService } from "../src/services/socketIO.service";
 import { LinkExchangeSession } from '../src/shared/linkExchange/linkExchangeSession';
 import { LinkDeviceServiceMock, DataArray } from "./mocks/service/linkdevice.service.mock";
 import { CelioDeviceMock } from './mocks/celioDeviceMock';
@@ -18,16 +18,16 @@ test("Exchange Data in two sessions", {timeout: 20000}, () => new Promise<void>(
   }, 5)
 
 
-  const websocketServiceA = new WebSocketService();
+  const websocketServiceA = new SocketIOService();
   const playerSessionServiceA = new PlayerSessionService(websocketServiceA);
   const linkDeviceServiceMockA = new LinkDeviceServiceMock(celioDeviceA, celioDeviceB);
   let linkDeviceExchangeServiceA = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceA), new StatusEmitterLinkDevice(linkDeviceServiceMockA as any))
 
   await websocketServiceA.connect();
-  let sessionInfo = await playerSessionServiceA.enterSession()
+  let sessionInfo = await playerSessionServiceA.createSession(2)
   expect(sessionInfo.full).toEqual(false);
 
-  const websocketServiceB = new WebSocketService();
+  const websocketServiceB = new SocketIOService();
   const playerSessionServiceB = new PlayerSessionService(websocketServiceB);
   const linkDeviceServiceMockB = new LinkDeviceServiceMock(celioDeviceB, celioDeviceA);
   let linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), new StatusEmitterLinkDevice(linkDeviceServiceMockB as any))
@@ -44,7 +44,7 @@ test("Exchange Data in two sessions", {timeout: 20000}, () => new Promise<void>(
     linkDeviceExchangeServiceB = new LinkExchangeSession(new CommandEmitterSocketIO(websocketServiceB), new StatusEmitterLinkDevice(linkDeviceServiceMockB as any))
 
     await websocketServiceA.connect();
-    const renewedSession = await playerSessionServiceA.enterSession();
+    const renewedSession = await playerSessionServiceA.createSession(2);
     expect(renewedSession.full).toEqual(false);
     await websocketServiceB.connect();
     expect((await playerSessionServiceB.enterSession(renewedSession.id)).full).toEqual(true);

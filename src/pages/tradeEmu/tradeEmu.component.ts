@@ -1,18 +1,30 @@
-import {Component, inject, ChangeDetectorRef, ViewChild} from '@angular/core';
+import {Component, inject, ChangeDetectorRef} from '@angular/core';
 import {NgClass, NgForOf, NgIf} from '@angular/common';
-import {CommandType, LinkStatus, LinkMode} from '../../shared/linkExchange/common';
 import {Subscription} from 'rxjs';
 import {PkmnFile} from './pkmnFile';
+import {CableLink} from './cableLink';
+import {CableTradePartner, TradePhase} from './cableTrade';
 import {LinkDeviceService} from '../../services/linkdevice.service';
+import {ToastService} from '../../services/toast.service';
 import {CelioPageAbstract} from '../shared/celioPage.abstact';
 import {CelioConnectionStatusComponent} from '../../component/panel/connect/connect.component';
+import {EmulatorComponent} from '../../component/emulator/emulator.component';
+import {EmulatorService} from '../../services/emulator.service';
+import {StatusEmitterAbstract} from '../../shared/linkExchange/statusEmitter/statusEmitter.abstract';
+import {StatusEmitterEmulator} from '../../shared/linkExchange/statusEmitter/statusEmitter.emulator';
+import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
   SelectingPokemon = 1,
-  UploadingPokemon = 2,
+  StartingLinkMode = 2,
   Ready = 3,
 }
+
+const PARTY_SIZE = 6;
+
+/** What the GBA is linked through: a GB-Link on USB or the emulator in the page. */
+type LinkDevice = 'usb' | 'emulator';
 
 @Component({
   selector: 'app-tradeEmu',
@@ -21,145 +33,176 @@ enum StepsState {
     NgIf,
     NgClass,
     NgForOf,
-    CelioConnectionStatusComponent
+    CelioConnectionStatusComponent,
+    EmulatorComponent
   ],
   templateUrl: './tradeEmu.component.html'
 })
 export class TradeEmuComponent extends CelioPageAbstract<StepsState>{
 
-  @ViewChild(CelioConnectionStatusComponent) connectionPanel!: CelioConnectionStatusComponent;
-
   private linkDeviceService = inject(LinkDeviceService)
-  protected linkDeviceConnected = false;
+  private toastService = inject(ToastService)
+  protected emulatorService = inject(EmulatorService)
 
   protected StepsState = StepsState;
+  protected device: LinkDevice | null = null;
 
   protected pkmFiles: PkmnFile[] = [];
+  protected selectedIndex = 0;
+  protected phase: TradePhase | null = null;
 
+  private link: CableLink | null = null;
   private disconnectSubscription: Subscription;
-  private statusSubscription: Subscription
 
-  constructor(cd: ChangeDetectorRef) {
-    super(cd);
+  constructor(private changeDetector: ChangeDetectorRef) {
+    super(changeDetector);
     this.stepState = StepsState.ConnectingCelioDevice;
-    this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(disconnect => {
-      this.linkDeviceConnected = false;
-      this.pkmFiles = [];
+    this.disconnectSubscription = this.linkDeviceService.disconnectEvents$.subscribe(() => {
+      if (this.device !== 'usb') return;
+      this.stopLink();
       this.advanceLinkState(StepsState.ConnectingCelioDevice)
     })
-
-    this.statusSubscription = this.linkDeviceService.statusEvents$.subscribe(statusEvents => {
-      console.log("Status: " + LinkStatus[statusEvents]);
-      if (statusEvents === LinkStatus.EmuTradeSessionFinished) {
-        this.pkmFiles = [];
-        this.stepState = StepsState.SelectingPokemon;
-        this.advanceLinkState(StepsState.SelectingPokemon);
-      }
-    });
   }
 
   ngOnInit() {
     if (this.linkDeviceService.isConnected()) {
+      this.device = 'usb';
+      this.stepState = StepsState.SelectingPokemon;
+    } else if (this.emulatorService.game()) {
+      this.device = 'emulator';
       this.stepState = StepsState.SelectingPokemon;
     }
   }
 
-  ngAfterViewInit() {
-    this.connectionPanel.next.subscribe(() => { this.advanceLinkState(StepsState.SelectingPokemon);})
-  }
-
   ngOnDestroy() {
     this.disconnectSubscription.unsubscribe();
-    this.statusSubscription.unsubscribe();
+    this.stopLink();
   }
 
-  connect(kind: 'usb' | 'serial' = 'usb'): void {
-    //if (kind === 'usb' ? !this.usbSupported : !this.serialSupported) return;
-
-    this.linkDeviceService.connectDevice(kind)
-      .then(isConnected => {
-          this.linkDeviceConnected = isConnected
-          if (isConnected) {
-            this.advanceLinkState(StepsState.SelectingPokemon)
-          }
-        }
-      )
+  /** The device the trade talks to. */
+  private createStatusEmitter(): StatusEmitterAbstract {
+    if (this.device !== 'emulator') return new StatusEmitterLinkDevice(this.linkDeviceService);
+    const adapter = this.emulatorService.linkAdapter;
+    // The page only goes on once the emulator has loaded
+    if (!adapter) throw new Error('The emulator has not loaded.');
+    return new StatusEmitterEmulator(adapter);
   }
 
-  disconnect(): void {
-    this.linkDeviceService.sendCommand(CommandType.Cancel);
-    this.pkmFiles = [];
-    this.advanceLinkState(StepsState.SelectingPokemon)
+  protected usbConnected(): void {
+    this.device = 'usb';
+    this.advanceLinkState(StepsState.SelectingPokemon);
   }
 
-  slotSelected($event: Event) {
-    const input = $event!.target as HTMLInputElement; // typecast to HTMLInputElement
-    if (input.files && input.files.length > 0 && input.files[0].size == 100) {
-      PkmnFile.fromFile(input.files[0]).then(pkmFile => {
+  /** The emulator in the page is the device: the Pokémon can be chosen while the player chooses the game. */
+  protected async useEmulator(): Promise<void> {
+    this.device = 'emulator';
+    if (!await this.emulatorService.prepare()) {
+      this.device = null;
+      this.toastService.show('The emulator didn\'t load. Check your connection and try again.', 'error', 5000);
+      return;
+    }
+    this.advanceLinkState(StepsState.SelectingPokemon);
+  }
+
+  /** Closing the emulator goes back to choosing how to link. */
+  protected emulatorClosed(): void {
+    this.stopLink();
+    this.device = null;
+    this.advanceLinkState(StepsState.ConnectingCelioDevice);
+  }
+
+  /** The emulator needs its game before the link mode can start. */
+  protected gameMissing(): boolean {
+    return this.device === 'emulator' && !this.emulatorService.game();
+  }
+
+  // Every chosen file in order, as many as the party has room for
+  async slotSelected($event: Event) {
+    const input = $event.target as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    input.value = '';
+    for (const file of files) {
+      try {
+        const pkmFile = await PkmnFile.fromFile(file);
+        if (this.pkmFiles.length >= PARTY_SIZE) break;
         this.pkmFiles.push(pkmFile);
-        input.value = '';
-      })
-    }
-    else if (input.files && input.files.length > 0 && input.files[0].size == 80) {
-      PkmnFile.fromFile(input.files[0]).then(pkmFile => {
-        this.pkmFiles.push(pkmFile);
-        input.value = '';
-      })
+        this.changeDetector.detectChanges();
+      } catch (error) {
+        this.toastService.show((error as Error).message, 'error', 4000);
+      }
     }
   }
 
-  async enableTradeMode():Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        subscription.unsubscribe();
-        reject(new Error('Timed out waiting for device to get ready'));
-      }, 2000);
-
-      const subscription = this.linkDeviceService.statusEvents$.subscribe(statusEvent => {
-        if (statusEvent === LinkStatus.DeviceReady) {
-          clearTimeout(timeout);
-          subscription.unsubscribe();
-          resolve(true);
-        }
-      });
-
-      this.linkDeviceService.sendCommand(CommandType.Cancel).then(ok => {
-        if (!ok) {
-          clearTimeout(timeout);
-          subscription.unsubscribe();
-          reject(new Error('Failed to send Cancel command'));
-        }
-      });
-
-      let args: Uint8Array = new Uint8Array(1);
-      args[0] = LinkMode.tradeEmu;
-      this.linkDeviceService.sendCommand(CommandType.SetMode, args).then(ok => {
-        if (!ok) {
-          clearTimeout(timeout);
-          subscription.unsubscribe();
-          reject(new Error('Failed to send SetMode command'));
-        }
-      })
-    });
-  }
-
-  confirmSelection() {
-    this.stepState = StepsState.UploadingPokemon;
-  }
-
-  async upload()
-  {
-    let success = await this.enableTradeMode();
-    if (!success) return;
-    for (const file of this.pkmFiles) {
-      const bytes = file.encryptedBuffer;
-      await this.linkDeviceService.sendDataRaw(bytes.slice(0, 50))
-      await this.linkDeviceService.sendDataRaw(bytes.slice(50))
-    }
-    this.stepState = StepsState.Ready;
+  select(index: number) {
+    this.selectedIndex = index;
   }
 
   remove(index: number) {
     this.pkmFiles = this.pkmFiles.filter((_, i) => i !== index);
+    if (this.selectedIndex >= index && this.selectedIndex > 0) this.selectedIndex--;
+  }
+
+  download(index: number) {
+    const pkmFile = this.pkmFiles[index];
+    const url = URL.createObjectURL(new Blob([pkmFile.decryptedBuffer.slice()], {type: 'application/octet-stream'}));
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = pkmFile.name.replace(/\.[ep]k3$/i, '') + '.pk3';
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url));
+  }
+
+  confirmSelection() {
+    this.advanceLinkState(StepsState.StartingLinkMode);
+  }
+
+  start() {
+    if (this.link || this.gameMissing()) return;
+    const partner = new CableTradePartner({
+      party: () => ({mons: this.pkmFiles.map(pkmFile => pkmFile.encryptedBuffer), selected: this.selectedIndex}),
+      events: {
+        phase: phase => {
+          this.phase = phase;
+          this.changeDetector.detectChanges();
+        },
+        traded: (slot, received) => this.traded(slot, received),
+        otherRoom: () => this.toastService.show('Only the Trade Center is available here. Choose it at the Pokémon Center clerk.', 'warning', 6000),
+      },
+    });
+    const link = this.link = new CableLink(this.createStatusEmitter(), partner);
+    link.start()
+      .then(() => this.advanceLinkState(StepsState.Ready))
+      .catch(error => {
+        this.link = null;
+        this.toastService.show(String(error?.message ?? error), 'error', 4000);
+      });
+  }
+
+  disconnect(): void {
+    this.stopLink();
+    this.advanceLinkState(StepsState.SelectingPokemon)
+  }
+
+  protected phaseText(): string {
+    switch (this.phase) {
+      case 'linkup': return 'Linking up with your game...';
+      case 'room': return 'Take a seat at the table to open the trade menu.';
+      case 'menu': return 'Choose a Pokémon on your game. This page trades the one highlighted above.';
+      case 'trading': return 'Trading...';
+      default: return '';
+    }
+  }
+
+  private traded(slot: number, received: Uint8Array) {
+    const pkmFile = PkmnFile.fromTraded(received);
+    this.pkmFiles[slot] = pkmFile;
+    this.toastService.show(`Received ${pkmFile.pokemonName}`, 'info', 4000);
+    this.changeDetector.detectChanges();
+  }
+
+  private stopLink() {
+    this.link?.stop();
+    this.link = null;
+    this.phase = null;
   }
 }
