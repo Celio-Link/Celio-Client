@@ -2,6 +2,7 @@ import {inject} from '@angular/core';
 import {Subscription} from 'rxjs';
 import {StepsState} from '../stepsState';
 import {EmulatorShim} from './emulator.abstract';
+import {SupportedEmulators} from '../../../services/emulatorSelection.service';
 import {LinkDeviceService} from '../../../services/linkdevice.service';
 import {EmulatorService} from '../../../services/emulator.service';
 import {ToastService} from '../../../services/toast.service';
@@ -13,6 +14,8 @@ import {StatusEmitterEmulator} from '../../../shared/linkExchange/statusEmitter/
 
 /** The emulator in the page: it links with the GBA on the GB-Link here, without a script or server. */
 export class BrowserEmulatorShim extends EmulatorShim {
+
+  readonly emulator = SupportedEmulators.browser;
 
   private linkDeviceService = inject(LinkDeviceService);
   private emulatorService = inject(EmulatorService);
@@ -36,8 +39,9 @@ export class BrowserEmulatorShim extends EmulatorShim {
     return false;
   }
 
-  /** It can start as soon as its game runs. */
+  /** It needs no script or server: once it loaded, its setup is done and it can start as soon as its game runs. */
   begin(): void {
+    this.markSetupDone();
     this.host.advance(StepsState.SettingLinkMode);
   }
 

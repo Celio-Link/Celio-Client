@@ -3,7 +3,7 @@ import {Subscription, take} from 'rxjs';
 import {StepsState} from '../stepsState';
 import {EmulatorShim} from './emulator.abstract';
 import {LinkDeviceService} from '../../../services/linkdevice.service';
-import {EmulatorSelectionService} from '../../../services/emulatorSelection.service';
+import {SupportedEmulators} from '../../../services/emulatorSelection.service';
 import {ToastService} from '../../../services/toast.service';
 import {CancelCommand, LinkStatus} from '../../../shared/linkExchange/common';
 import {LinkDeviceUtils} from '../../../shared/linkDeviceUtils';
@@ -14,8 +14,9 @@ import {StatusEmitterLinkDevice} from '../../../shared/linkExchange/statusEmitte
 /** The desktop mGBA: it links through our script, which runs a local server. */
 export class MGBAEmulatorShim extends EmulatorShim {
 
+  readonly emulator = SupportedEmulators.mGBA;
+
   private linkDeviceService = inject(LinkDeviceService);
-  private emulatorSelection = inject(EmulatorSelectionService);
   private toastService = inject(ToastService);
 
   private linkSession: LinkExchangeSession | undefined = undefined;
@@ -56,7 +57,9 @@ export class MGBAEmulatorShim extends EmulatorShim {
   }
 
   waitForServer(delay: number = 1000): void {
+    // The script is loaded: the setup is done
     this.emulatorSelection.setSetupComplete(true)
+    this.markSetupDone();
     console.log("Start Wait for Server");
     this.host.advance(StepsState.WaitForLocalServer)
     const commandEmitterWebsocket = new CommandEmitterWebsocket();

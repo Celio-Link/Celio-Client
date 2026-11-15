@@ -87,7 +87,6 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
       shim.dispose();
       return;
     }
-    this.emulatorSelection.setSelectedEmulator(emulator);
     this.setShim(shim);
     shim.begin();
   }

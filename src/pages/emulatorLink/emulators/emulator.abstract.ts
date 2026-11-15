@@ -1,4 +1,6 @@
+import {inject} from '@angular/core';
 import {StepsState} from '../stepsState';
+import {EmulatorSelectionService, SupportedEmulators} from '../../../services/emulatorSelection.service';
 
 /** What a shim may do with the page's steps. */
 export interface EmulatorShimHost {
@@ -14,7 +16,17 @@ export interface EmulatorShimHost {
  */
 export abstract class EmulatorShim {
 
+  protected emulatorSelection = inject(EmulatorSelectionService);
+
   constructor(protected host: EmulatorShimHost) {}
+
+  /** The emulator these steps are for. */
+  abstract readonly emulator: SupportedEmulators;
+
+  /** The setup is done from this emulator's view: remember it, so the other pages know it was chosen. */
+  protected markSetupDone(): void {
+    this.emulatorSelection.setSelectedEmulator(this.emulator);
+  }
 
   /** The steps this emulator goes through, shown in the step bar. */
   abstract supportedStates(): StepsState[];
