@@ -62,10 +62,23 @@
   background: #000;
 }
 
+/* The buttons and the keys' hint in a panel, centered under the screen */
+.emu-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .emu-toolbar {
   display: flex;
   flex-wrap: wrap;
+  justify-content: center;
   gap: 0.5rem;
+}
+
+.emu-hint {
+  text-align: center;
 }
 
 /* The page's button colors don't change for disabled buttons */

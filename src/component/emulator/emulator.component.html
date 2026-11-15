@@ -78,30 +78,32 @@
         </div>
       </div>
 
-      <div class="emu-toolbar">
-        <button type="button" class="btn btn-sm text-xl emu-full-keep" (click)="toggleSound()">{{ service.muted() ? 'Sound off' : 'Sound on' }}</button>
-        @if (!emulatorWindow.pictureInPicture()) {
-          <button type="button" class="btn btn-sm text-xl emu-full-keep" (click)="toggleFullscreen()">{{ fullscreen ? 'Exit full screen' : 'Full screen' }}</button>
-        }
-        @if (popped() && !windowOnly) {
-          <button type="button" class="btn btn-sm text-xl" (click)="backToPage()">Back to page</button>
-        }
-        <button type="button" class="btn btn-sm text-xl" (click)="service.downloadSave()">
-          Download save
-          @if (service.unsaved()) {
-            <span class="emu-dot" title="The game saved since you last downloaded its save"></span>
+      <div class="emu-controls" [class.box]="!fullscreen">
+        <div class="emu-toolbar">
+          <button type="button" class="btn btn-sm text-xl emu-full-keep" (click)="toggleSound()">{{ service.muted() ? 'Sound off' : 'Sound on' }}</button>
+          @if (!emulatorWindow.pictureInPicture()) {
+            <button type="button" class="btn btn-sm text-xl emu-full-keep" (click)="toggleFullscreen()">{{ fullscreen ? 'Exit full screen' : 'Full screen' }}</button>
           }
-        </button>
-        <button type="button" class="btn btn-sm text-xl" (click)="saveFile.click()" [disabled]="linked || service.starting()">Load save</button>
-        <input #saveFile type="file" accept=".sav" hidden (change)="onFiles($event)">
-        <button type="button" class="btn btn-sm text-xl" (click)="reset()" [disabled]="linked">Reset</button>
-        <button type="button" class="btn btn-sm text-xl" (click)="changeGame()" [disabled]="linked">Change game</button>
-        <button type="button" class="btn btn-sm text-xl" (click)="closeEmulator()" [disabled]="linked">Close</button>
-      </div>
+          @if (popped() && !windowOnly) {
+            <button type="button" class="btn btn-sm text-xl" (click)="backToPage()">Back to page</button>
+          }
+          <button type="button" class="btn btn-sm text-xl" (click)="service.downloadSave()">
+            Download save
+            @if (service.unsaved()) {
+              <span class="emu-dot" title="The game saved since you last downloaded its save"></span>
+            }
+          </button>
+          <button type="button" class="btn btn-sm text-xl" (click)="saveFile.click()" [disabled]="linked || service.starting()">Load save</button>
+          <input #saveFile type="file" accept=".sav" hidden (change)="onFiles($event)">
+          <button type="button" class="btn btn-sm text-xl" (click)="reset()" [disabled]="linked">Reset</button>
+          <button type="button" class="btn btn-sm text-xl" (click)="changeGame()" [disabled]="linked">Change game</button>
+          <button type="button" class="btn btn-sm text-xl" (click)="closeEmulator()" [disabled]="linked">Close</button>
+        </div>
 
-      <p class="emu-hint font-Gen3 text-xl">
-        Arrow keys move. X is A, Z is B, A and S are L and R, Enter is Start and Space is Select.
-      </p>
+        <p class="emu-hint font-Gen3 text-xl">
+          Arrow keys move. X is A, Z is B, A and S are L and R, Enter is Start and Space is Select.
+        </p>
+      </div>
     </div>
   }
 </div>

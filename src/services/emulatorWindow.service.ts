@@ -1,7 +1,8 @@
 import {Injectable, NgZone, signal} from '@angular/core';
 
-const WIDTH = 640;
-const HEIGHT = 600;
+// Wide enough for the emulator's buttons in one row, inside their panel box
+const WIDTH = 820;
+const HEIGHT = 700;
 const TITLE = 'Celio Link – Emulator';
 
 interface DocumentPictureInPicture {
