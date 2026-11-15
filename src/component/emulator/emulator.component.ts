@@ -14,7 +14,7 @@ import {GameSeries} from '../../emulator/emulatorGame';
 })
 export class EmulatorComponent implements OnInit, OnDestroy {
 
-  /** The games the page links: the emulator takes the ROMs of this series. */
+  /** The games the page links: the emulator links any ROM it plays as this series. */
   @Input() series: GameSeries = 'pokemon';
 
   /** The link mode is running: the game can't be changed, reset, given another save or closed. */
@@ -82,7 +82,7 @@ export class EmulatorComponent implements OnInit, OnDestroy {
     if (!files.length) return;
     const romFile = files.find(f => !/\.sav$/i.test(f.name));
     const saveFile = files.find(f => /\.sav$/i.test(f.name));
-    if (romFile && saveFile && await this.service.hasUnsavedProgress(romFile, this.series)
+    if (romFile && saveFile && await this.service.hasUnsavedProgress(romFile)
         && !confirm('This browser keeps progress in this game that you haven\'t downloaded. Play from your save file instead?')) {
       return;
     }
@@ -92,10 +92,11 @@ export class EmulatorComponent implements OnInit, OnDestroy {
     }
     const result = await this.service.openFiles(files, this.series);
     if (!result.ok) this.toast.show(result.message, 'error', 5000);
+    else if (result.notice) this.toast.show(result.notice, 'warning', 6000);
   }
 
   protected async play(id: string): Promise<void> {
-    const result = await this.service.playStored(id);
+    const result = await this.service.playStored(id, this.series);
     if (!result.ok) this.toast.show(result.message, 'error', 5000);
   }
 

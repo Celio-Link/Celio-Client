@@ -1,7 +1,7 @@
 /**
- * The Generation III Pokémon cartridges the emulator plays: Ruby, Sapphire, Emerald,
- * FireRed and LeafGreen in every language and revision, recognized by the CRC-32 of
- * the whole ROM so only clean cartridge dumps are taken.
+ * The Generation III Pokémon cartridges: Ruby, Sapphire, Emerald, FireRed and LeafGreen
+ * in every language and revision, recognized by the CRC-32 of the whole ROM. The emulator
+ * plays any ROM; these tell the player which game they loaded.
  */
 
 export type PokemonGame = 'Ruby' | 'Sapphire' | 'Emerald' | 'FireRed' | 'LeafGreen';
@@ -18,10 +18,6 @@ export interface PokemonRom {
   game: PokemonGame;
   language: PokemonLanguage;
 }
-
-export type RomCheck =
-  | { ok: true; rom: PokemonRom }
-  | { ok: false; reason: 'notPokemon' | 'unknownDump'; game?: PokemonGame };
 
 const GAMES: Record<string, PokemonGame> = {
   AXV: 'Ruby',
@@ -122,11 +118,9 @@ export function headerCode(rom: Uint8Array): string {
   return String.fromCharCode(rom[0xAC], rom[0xAD], rom[0xAE], rom[0xAF]);
 }
 
-export function identifyRom(rom: Uint8Array): RomCheck {
-  const known = KNOWN.get(crc32(rom));
-  if (known) return { ok: true, rom: known };
-  const game = GAMES[headerCode(rom).slice(0, 3)];
-  return game ? { ok: false, reason: 'unknownDump', game } : { ok: false, reason: 'notPokemon' };
+/** The Pokémon game a cartridge header's game code belongs to, in any language. */
+export function pokemonGame(code: string): PokemonGame | undefined {
+  return GAMES[code.slice(0, 3)];
 }
 
 /** A known dump by its CRC-32. */

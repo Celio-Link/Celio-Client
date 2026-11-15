@@ -18,6 +18,7 @@ import {CelioSessionComponent, SessionState} from '../../component/panel/session
 import {EmulatorComponent} from '../../component/emulator/emulator.component';
 import {EmulatorService} from '../../services/emulator.service';
 import {ToastService} from '../../services/toast.service';
+import {GameVariant} from '../../emulator/link/awProtocol';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -54,6 +55,8 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   // Per-route (app.routes.ts): which firmware mode this page drives and the matching ready-screen copy.
   protected awVariant: number | undefined;
+  // The Advance Wars the emulator's game links as, chosen by the player when neither its dump nor its header says
+  private chosenVariant: { crc32: string; variant: GameVariant } | undefined;
   protected readyInstruction: string | undefined;
   protected preStartInstruction: string | undefined;
 
@@ -132,9 +135,33 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
     this.advanceLinkState(StepsState.ConnectingCelioDevice);
   }
 
-  /** The emulator needs its game before the link mode can start: the game says which Advance Wars is linked. */
+  /** The emulator needs its game before the link mode can start. */
   protected gameMissing(): boolean {
-    return this.device === 'emulator' && !this.emulatorService.game()?.advanceWars;
+    return this.device === 'emulator' && !this.emulatorService.game();
+  }
+
+  /** The emulator's game doesn't say which Advance Wars it is, so the player chooses. */
+  protected variantUnknown(): boolean {
+    const game = this.emulatorService.game();
+    return this.device === 'emulator' && !!game && game.awVariant === undefined;
+  }
+
+  /** The emulator's game is loaded, but which Advance Wars it links as isn't chosen yet. */
+  protected variantMissing(): boolean {
+    return this.device === 'emulator' && !this.gameMissing() && this.emulatorVariant() === undefined;
+  }
+
+  /** The variant of the Advance Wars mode the emulator's game links with, once it is known. */
+  protected emulatorVariant(): GameVariant | undefined {
+    const game = this.emulatorService.game();
+    if (!game) return undefined;
+    if (game.awVariant !== undefined) return game.awVariant;
+    return this.chosenVariant?.crc32 === game.crc32 ? this.chosenVariant.variant : undefined;
+  }
+
+  protected chooseEmulatorVariant(variant: GameVariant) {
+    const game = this.emulatorService.game();
+    if (game) this.chosenVariant = { crc32: game.crc32, variant };
   }
 
   protected selectAwVariant(variant: number) {
@@ -154,8 +181,8 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
   }
 
   start() {
-    if (this.gameMissing()) return;
-    const variant = this.device === 'emulator' ? this.emulatorService.game()?.advanceWars?.variant : this.awVariant;
+    const variant = this.device === 'emulator' ? this.emulatorVariant() : this.awVariant;
+    if (this.device === 'emulator' && variant === undefined) return;
     const device = this.createStatusEmitter();
     LinkDeviceUtils.tryEnableLinkMode(device, LinkMode.advanceWars, variant)
       .then(() => {

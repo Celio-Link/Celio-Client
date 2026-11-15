@@ -4,6 +4,8 @@
  * device. Every call fails soft: private windows and blocked storage just keep nothing.
  */
 
+import type {GameSeries} from './emulatorGame';
+
 const DB_NAME = 'celio-emulator';
 const DB_VERSION = 1;
 const GAMES = 'games';
@@ -15,8 +17,10 @@ export interface StoredGame {
   id: string;
   /** e.g. "Pokémon FireRed" */
   title: string;
-  /** Name of the ROM dump */
+  /** Name of the ROM dump, or of the ROM file when it isn't a known dump */
   name: string;
+  /** The series of the page it was last played on; games kept before any ROM played don't have it */
+  series?: GameSeries;
   save: Uint8Array | null;
   /** The game saved since its save was last downloaded */
   unsaved: boolean;
@@ -94,7 +98,7 @@ export class GameStore {
   }
 
   /** Keeps a game that was just started (its ROM is stored once). */
-  put(game: { id: string; title: string; name: string; rom: Uint8Array; save: Uint8Array | null; unsaved: boolean }): Promise<boolean> {
+  put(game: { id: string; title: string; name: string; series: GameSeries; rom: Uint8Array; save: Uint8Array | null; unsaved: boolean }): Promise<boolean> {
     return this.write(async () => {
       try {
         const now = Date.now();
@@ -104,7 +108,7 @@ export class GameStore {
             const old = (e.target as IDBRequest<StoredGame | undefined>).result;
             if (!old) tx.objectStore(ROMS).put(game.rom.slice().buffer, game.id);
             const stored: StoredGame = {
-              id: game.id, title: game.title, name: game.name, save: game.save, unsaved: game.unsaved,
+              id: game.id, title: game.title, name: game.name, series: game.series, save: game.save, unsaved: game.unsaved,
               addedAt: old?.addedAt ?? now, playedAt: now,
             };
             games.put(stored);

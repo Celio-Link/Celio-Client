@@ -2,14 +2,15 @@ import {Injectable, NgZone, signal} from '@angular/core';
 import {GbaEmulator} from '../emulator/gbaEmulator';
 import {EmulatorInput} from '../emulator/emulatorInput';
 import {GameStore, StoredGame} from '../emulator/gameStore';
-import {EmulatorGame, GameSeries, identifyGame, knownGame} from '../emulator/emulatorGame';
+import {describeGame, EmulatorGame, GameSeries, identifyGame, knownSeries} from '../emulator/emulatorGame';
+import {crc32} from '../emulator/pokemonRom';
 import {LinkAdapter} from '../emulator/link/linkAdapter';
 
 const EMULATOR_URL = 'emulator/';
 const MUTED_KEY = 'celio-emulator-muted';
 
 export type OpenResult =
-  | { ok: true }
+  | { ok: true; notice?: string }
   | { ok: false; message: string };
 
 /**
@@ -73,22 +74,22 @@ export class EmulatorService {
   }
 
   /**
-   * Plays the chosen files: a ROM of the page's series, optionally with its save. A save on its
-   * own replaces the save of the loaded game. Call from a user gesture (it starts the sound).
+   * Plays the chosen files: a ROM, linked as the page's series, optionally with its save. A save on
+   * its own replaces the save of the loaded game. Call from a user gesture (it starts the sound).
    */
   openFiles(files: File[], series: GameSeries): Promise<OpenResult> {
     return this.exclusive(() => this.open(files, series));
   }
 
   /** The kept game a ROM file belongs to has progress that was never downloaded. */
-  async hasUnsavedProgress(romFile: File, series: GameSeries): Promise<boolean> {
-    const check = identifyGame(new Uint8Array(await romFile.arrayBuffer()), series);
-    return check.ok && this.library().some(game => game.id === check.game.crc32 && game.unsaved);
+  async hasUnsavedProgress(romFile: File): Promise<boolean> {
+    const id = crc32(new Uint8Array(await romFile.arrayBuffer()));
+    return this.library().some(game => game.id === id && game.unsaved);
   }
 
   /** The kept games of a series. */
   kept(series: GameSeries): StoredGame[] {
-    return this.library().filter(game => knownGame(game.id)?.series === series);
+    return this.library().filter(game => (game.series ?? knownSeries(game.id)) === series);
   }
 
   /** A page of a series opened: a loaded game of the other series is closed (its save stays kept). */
@@ -97,13 +98,12 @@ export class EmulatorService {
     if (game && game.series !== series && !this.linkActive) this.closeGame();
   }
 
-  /** Plays a game kept in this browser. */
-  playStored(id: string): Promise<OpenResult> {
+  /** Plays a game kept in this browser, linked as the page's series. */
+  playStored(id: string, series: GameSeries): Promise<OpenResult> {
     return this.exclusive(async () => {
       const stored = await this.store.get(id);
-      const game = stored ? knownGame(stored.id) : undefined;
-      if (!stored || !game) return { ok: false, message: 'That game isn\'t kept in this browser any more.' };
-      return this.start(stored.rom, game, stored.save, stored.unsaved);
+      if (!stored) return { ok: false, message: 'That game isn\'t kept in this browser any more.' };
+      return this.start(stored.rom, describeGame(stored.id, stored.rom, series, stored.name), stored.save, stored.unsaved);
     });
   }
 
@@ -131,8 +131,7 @@ export class EmulatorService {
       return { ok: false, message: 'Choose your game\'s ROM (.gba), and its save (.sav) if you have one.' };
     }
     const rom = new Uint8Array(await romFile.arrayBuffer());
-    const check = identifyGame(rom, series);
-    if (!check.ok) return check;
+    const check = identifyGame(rom, series, romFile.name);
     let save: Uint8Array | null = null;
     let unsaved = false;
     if (saveFile) {
@@ -144,7 +143,8 @@ export class EmulatorService {
       save = stored?.save ?? null;
       unsaved = stored?.unsaved ?? false;
     }
-    return this.start(rom, check.game, save, unsaved);
+    const result = await this.start(rom, check.game, save, unsaved);
+    return result.ok && check.notice ? { ok: true, notice: check.notice } : result;
   }
 
   private async start(rom: Uint8Array, info: EmulatorGame, save: Uint8Array | null, unsaved: boolean): Promise<OpenResult> {
@@ -164,7 +164,7 @@ export class EmulatorService {
     this.unsaved.set(unsaved);
     // Its screen is already up when one game replaces another
     if (this.input) this.resume();
-    await this.store.put({ id: info.crc32, title: info.title, name: info.name, rom, save: save ?? emulator.getSave(), unsaved });
+    await this.store.put({ id: info.crc32, title: info.title, name: info.name, series: info.series, rom, save: save ?? emulator.getSave(), unsaved });
     await this.refreshLibrary();
     return { ok: true };
   }
