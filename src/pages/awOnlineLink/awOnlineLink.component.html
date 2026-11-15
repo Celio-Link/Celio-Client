@@ -68,14 +68,28 @@
         </div>
       </ng-container>
 
+      <ng-container *ngIf="variantUnknown()">
+        <div class="box relative @container flex flex-col gap-2">
+          <p class="font-Gen3 text-xl @xs:text-2xl @lg:text-3xl">This ROM doesn't say which Advance Wars it is. Link it as:</p>
+          <div class="flex flex-wrap gap-2">
+            <button (click)="chooseEmulatorVariant(1)" [class.btn-neutral]="emulatorVariant() === 1" [disabled]="hasReached(StepsState.Ready)"
+                    class="btn btn-sm @xs:btn-md @lg:btn-lg text-xl @lg:text-2xl">Advance Wars</button>
+            <button (click)="chooseEmulatorVariant(2)" [class.btn-neutral]="emulatorVariant() === 2" [disabled]="hasReached(StepsState.Ready)"
+                    class="btn btn-sm @xs:btn-md @lg:btn-lg text-xl @lg:text-2xl">Advance Wars 2</button>
+          </div>
+        </div>
+        <div class="divider"></div>
+      </ng-container>
+
       <celio-session-panel [active]="hasReached(StepsState.JoiningSession)"></celio-session-panel>
 
       <div *ngIf="!(device === 'emulator' && hasReached(StepsState.Ready))" [class.opacity-100]="hasReached(StepsState.SettingLinkMode)" class="transition-opacity opacity-0 duration-500 ease-in-out">
         <div class="box relative">
           <div class="flex w-full h-[5rem]">
             <div class="card rounded-box grid h-20 grow place-items-center">
-              <button (click)="start()" class="btn btn-lg" [disabled]="!isCurrentlyIn(StepsState.SettingLinkMode) || gameMissing()">Start</button>
+              <button (click)="start()" class="btn btn-lg" [disabled]="!isCurrentlyIn(StepsState.SettingLinkMode) || gameMissing() || variantMissing()">Start</button>
               <p *ngIf="isCurrentlyIn(StepsState.SettingLinkMode) && gameMissing()" class="font-Gen3 text-xl">Start your game first.</p>
+              <p *ngIf="isCurrentlyIn(StepsState.SettingLinkMode) && variantMissing()" class="font-Gen3 text-xl">Choose which Advance Wars it is first.</p>
             </div>
             <img *ngIf="isCurrentlyIn(StepsState.SettingLinkMode)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
           </div>
