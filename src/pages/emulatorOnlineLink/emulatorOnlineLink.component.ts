@@ -18,6 +18,7 @@ import {StatusEmitterAbstract} from '../../shared/linkExchange/statusEmitter/sta
 import {StatusEmitterEmulator} from '../../shared/linkExchange/statusEmitter/statusEmitter.emulator';
 import {EmulatorComponent} from '../../component/emulator/emulator.component';
 import {EmulatorService} from '../../services/emulator.service';
+import {EmulatorWindowService} from '../../services/emulatorWindow.service';
 
 enum StepsState {
   ChooseEmulator = 0,
@@ -52,6 +53,7 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
   private statusEmitterWebsocket: StatusEmitterWebsocket | undefined = undefined;
 
   protected emulatorService = inject(EmulatorService)
+  private emulatorWindow = inject(EmulatorWindowService);
   /** The emulator in the page was chosen: it is the device of the session, like a GBA on a GB-Link. */
   protected browser = false;
 
@@ -115,7 +117,10 @@ export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   /** The emulator in the page needs no script or local server: the session can begin while the player chooses the game. */
   protected async browserSelected(): Promise<void> {
+    // Before anything is awaited: browsers only open a window straight from the click
+    this.emulatorWindow.open();
     if (!await this.emulatorService.prepare()) {
+      this.emulatorWindow.close();
       this.toastService.show('The emulator didn\'t load. Check your connection and try again.', 'error', 5000);
       return;
     }

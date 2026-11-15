@@ -256,3 +256,30 @@
     display: none;
   }
 }
+
+/* In a window of its own: the picture as large as the window leaves room for, the buttons below */
+:host(.emu-host-popped) {
+  height: 100%;
+}
+
+.emu-popped:not(.emu-full),
+.emu-popped:not(.emu-full) .emu-game {
+  height: 100%;
+}
+
+.emu-popped:not(.emu-full) .emu-game {
+  max-width: none;
+}
+
+.emu-popped:not(.emu-full) .emu-screen {
+  flex: 1;
+  min-height: 0;
+  container-type: size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emu-popped:not(.emu-full) .emu-screen canvas {
+  width: min(100cqw, 150cqh);
+}

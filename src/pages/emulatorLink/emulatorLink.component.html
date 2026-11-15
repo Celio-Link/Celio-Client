@@ -2,8 +2,8 @@
   <ul class="steps w-full steps-horizontal overflow-x-auto">
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect<span class="hidden sm:inline"> Device</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Choose<span class="hidden sm:inline"> Emulator</span></li>
-    <li *ngIf="!browser" class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Load<span class="hidden sm:inline"> Script</span></li>
-    <li *ngIf="!browser" class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait<span class="hidden sm:inline"> for Server</span></li>
+    <li *ngIf="showsStep(StepsState.DownloadPlugin)" class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Load<span class="hidden sm:inline"> Script</span></li>
+    <li *ngIf="showsStep(StepsState.WaitForLocalServer)" class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait<span class="hidden sm:inline"> for Server</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Start<span class="hidden sm:inline"> Link Mode</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 5 }">Ready</li>
   </ul>
@@ -31,7 +31,7 @@
             <div class="flex flex-wrap gap-2">
               <!-- mGBA's script needs the desktop mGBA, which phones and tablets don't have -->
               <button (click)="emulatorSelected(SupportedEmulators.mGBA)" class="btn btn-sm text-2xl w-fit pointer-coarse:hidden">mGBA</button>
-              <button (click)="browserSelected()" class="btn btn-sm text-2xl w-fit">Play in Browser</button>
+              <button (click)="emulatorSelected(SupportedEmulators.browser)" class="btn btn-sm text-2xl w-fit">Play in Browser</button>
             </div>
           </div>
 
@@ -60,7 +60,7 @@
               <button onclick="window.open('https://github.com/Exormeter/mGBA_celio_edition/releases/tag/3.0.1', '_blank')" class="btn btn-sm text-2xl">
                 Download script
               </button>
-              <button *ngIf=isCurrentlyIn(StepsState.DownloadPlugin) (click)="startWaitForServer()" class="btn btn-sm text-2xl">Next Step</button>
+              <button *ngIf=isCurrentlyIn(StepsState.DownloadPlugin) (click)="mgba?.waitForServer()" class="btn btn-sm text-2xl">Next Step</button>
             </div>
           </div>
 

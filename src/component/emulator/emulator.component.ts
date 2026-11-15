@@ -1,5 +1,6 @@
-import {Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild, computed} from '@angular/core';
+import {Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild, computed, effect, signal} from '@angular/core';
 import {EmulatorService} from '../../services/emulator.service';
+import {EmulatorWindowService} from '../../services/emulatorWindow.service';
 import {ToastService} from '../../services/toast.service';
 import {GameSeries} from '../../emulator/emulatorGame';
 
@@ -11,6 +12,7 @@ import {GameSeries} from '../../emulator/emulatorGame';
   selector: 'celio-emulator',
   templateUrl: './emulator.component.html',
   styleUrl: './emulator.component.css',
+  host: { '[class.emu-host-popped]': 'popped()' },
 })
 export class EmulatorComponent implements OnInit, OnDestroy {
 
@@ -25,11 +27,56 @@ export class EmulatorComponent implements OnInit, OnDestroy {
   protected fullscreen = false;
   protected dragging = false;
   protected readonly game = computed(() => this.service.game());
+  /** The emulator is in a window of its own. */
+  protected readonly popped = signal(false);
 
   private screenCanvas: HTMLCanvasElement | null = null;
   private touchArea: HTMLElement | null = null;
+  // Where the emulator was in the page while it is in its window
+  private placeholder: Comment | null = null;
+  private readonly moveBackNow = () => this.moveBack();
 
-  constructor(protected service: EmulatorService, private toast: ToastService, private host: ElementRef<HTMLElement>) {}
+  constructor(protected service: EmulatorService, protected emulatorWindow: EmulatorWindowService,
+              private toast: ToastService, private host: ElementRef<HTMLElement>) {
+    effect(() => {
+      const win = this.emulatorWindow.window();
+      if (win) this.moveInto(win);
+      else this.moveBack();
+    });
+  }
+
+  /** Moves the emulator into its window; the game keeps running in the page. */
+  private moveInto(win: Window): void {
+    const el = this.host.nativeElement;
+    if (el.ownerDocument === win.document || !el.parentNode) return;
+    if (this.fullscreen) this.exitFullscreen();
+    this.placeholder = document.createComment('celio-emulator');
+    el.before(this.placeholder);
+    win.document.body.append(el);
+    // While the window closes its page is still there to take the emulator out of
+    win.addEventListener('pagehide', this.moveBackNow, { once: true });
+    this.popped.set(true);
+    this.reattach();
+  }
+
+  private moveBack(): void {
+    if (!this.placeholder) return;
+    const el = this.host.nativeElement;
+    el.ownerDocument.defaultView?.removeEventListener('pagehide', this.moveBackNow);
+    this.placeholder.replaceWith(el);
+    this.placeholder = null;
+    this.popped.set(false);
+    this.reattach();
+  }
+
+  /** The screen is in another window now: the keys and frames come from there. */
+  private reattach(): void {
+    if (this.screenCanvas) this.attach();
+  }
+
+  protected backToPage(): void {
+    this.emulatorWindow.close();
+  }
 
   @ViewChild('screen') set screen(ref: ElementRef<HTMLCanvasElement> | undefined) {
     this.screenCanvas = ref?.nativeElement ?? null;
@@ -56,8 +103,14 @@ export class EmulatorComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Nothing to show the game on any more, also once it is back in the page
+    this.screenCanvas = null;
+    this.touchArea = null;
     this.service.detachView();
     if (this.fullscreen) this.exitFullscreen();
+    // Back into the page, for Angular to take it out of there
+    this.moveBack();
+    this.emulatorWindow.close();
   }
 
   protected async onFiles(event: Event): Promise<void> {

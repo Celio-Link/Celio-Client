@@ -1,4 +1,4 @@
-<div class="emu-root" [class.emu-full]="fullscreen">
+<div class="emu-root" [class.emu-full]="fullscreen" [class.emu-popped]="popped()">
   @if (!game()) {
     <div class="box relative" [class.emu-drop]="dragging"
          (dragover)="onDragOver($event)" (dragleave)="dragging = false" (drop)="onDrop($event)">
@@ -65,7 +65,12 @@
 
       <div class="emu-toolbar">
         <button type="button" class="btn btn-sm text-xl emu-full-keep" (click)="toggleSound()">{{ service.muted() ? 'Sound off' : 'Sound on' }}</button>
-        <button type="button" class="btn btn-sm text-xl emu-full-keep" (click)="toggleFullscreen()">{{ fullscreen ? 'Exit full screen' : 'Full screen' }}</button>
+        @if (!emulatorWindow.pictureInPicture()) {
+          <button type="button" class="btn btn-sm text-xl emu-full-keep" (click)="toggleFullscreen()">{{ fullscreen ? 'Exit full screen' : 'Full screen' }}</button>
+        }
+        @if (popped()) {
+          <button type="button" class="btn btn-sm text-xl" (click)="backToPage()">Back to page</button>
+        }
         <button type="button" class="btn btn-sm text-xl" (click)="service.downloadSave()">
           Download save
           @if (service.unsaved()) {

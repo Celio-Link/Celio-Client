@@ -102,6 +102,8 @@ export class GbaEmulator {
   private audio: AudioOutput | null = null;
   private volume = 1;
   private transferHandler: ((rx: number) => void) | null = null;
+  // The window the screen is in, whose frames the game is drawn on
+  private view: Window | null = typeof window !== 'undefined' ? window : null;
   private readonly onVisibility = () => this.schedule();
 
   constructor(readonly m: GbaCoreModule) {
@@ -207,17 +209,14 @@ export class GbaEmulator {
     if (this.running || !this.loaded) return;
     this.running = true;
     this.resetClock();
-    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', this.onVisibility);
+    this.view?.document.addEventListener('visibilitychange', this.onVisibility);
     this.schedule();
   }
 
   stop(): void {
     this.running = false;
-    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', this.onVisibility);
-    if (this.rafId !== null) cancelAnimationFrame(this.rafId);
-    if (this.timerId !== null) clearTimeout(this.timerId);
-    this.rafId = null;
-    this.timerId = null;
+    this.view?.document.removeEventListener('visibilitychange', this.onVisibility);
+    this.unschedule();
     // Nothing to play while stopped; enableAudio resumes it. Asked for whatever the state reads: it lags behind
     // a resume or suspend still under way, and the two take effect in the order they were asked for
     this.audio?.ctx.suspend().catch(() => {});
@@ -299,11 +298,33 @@ export class GbaEmulator {
 
   private schedule(): void {
     if (!this.running) return;
-    const hidden = typeof document !== 'undefined' && document.hidden;
-    if (typeof requestAnimationFrame === 'function' && !hidden) {
-      if (this.rafId === null) this.rafId = requestAnimationFrame(() => { this.rafId = null; this.tick(); });
+    const view = this.view;
+    if (view && typeof view.requestAnimationFrame === 'function' && !view.document.hidden) {
+      if (this.rafId === null) this.rafId = view.requestAnimationFrame(() => { this.rafId = null; this.tick(); });
     } else if (this.timerId === null) {
       this.timerId = setTimeout(() => { this.timerId = null; this.tick(); }, 16);
+    }
+  }
+
+  private unschedule(): void {
+    // The window may have closed already, and its frames with it
+    if (this.rafId !== null) try { this.view?.cancelAnimationFrame(this.rafId); } catch { /* closed */ }
+    if (this.timerId !== null) clearTimeout(this.timerId);
+    this.rafId = null;
+    this.timerId = null;
+  }
+
+  /** The screen moved to another window: the game is drawn on that window's frames. */
+  private moveTo(view: Window): void {
+    const running = this.running;
+    if (running) {
+      this.view?.document.removeEventListener('visibilitychange', this.onVisibility);
+      this.unschedule();
+    }
+    this.view = view;
+    if (running) {
+      view.document.addEventListener('visibilitychange', this.onVisibility);
+      this.schedule();
     }
   }
 
@@ -317,6 +338,8 @@ export class GbaEmulator {
   // ==================== Screen ====================
 
   attachCanvas(canvas: HTMLCanvasElement | null): void {
+    const view = canvas?.ownerDocument.defaultView ?? (typeof window !== 'undefined' ? window : null);
+    if (view && view !== this.view) this.moveTo(view);
     this.canvas = canvas;
     this.ctx = canvas ? canvas.getContext('2d') : null;
     if (canvas) {

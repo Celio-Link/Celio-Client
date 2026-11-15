@@ -246,7 +246,8 @@ export class EmulatorService {
     if (!emulator) return;
     this.input?.detach();
     emulator.attachCanvas(canvas);
-    const input = new EmulatorInput(emulator, () => !!this.game(), touchArea, () => this.startSound());
+    const view = canvas.ownerDocument.defaultView ?? window;
+    const input = new EmulatorInput(emulator, () => !!this.game(), touchArea, () => this.startSound(), view);
     this.input = input;
     this.zone.runOutsideAngular(() => input.attach());
     this.resume();
