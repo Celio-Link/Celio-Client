@@ -1,4 +1,4 @@
-import {Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild, computed, effect, signal} from '@angular/core';
+import {Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild, computed, effect, signal, untracked} from '@angular/core';
 import {EmulatorService} from '../../services/emulator.service';
 import {EmulatorWindowService} from '../../services/emulatorWindow.service';
 import {ToastService} from '../../services/toast.service';
@@ -21,6 +21,11 @@ export class EmulatorComponent implements OnInit, OnDestroy {
 
   /** The link mode is running: the game can't be changed, reset, given another save or closed. */
   @Input() linked = false;
+  /**
+   * The game only plays in its own window and never goes back into the page: closing the window,
+   * or putting it back into the page, closes the game.
+   */
+  @Input() windowOnly = false;
   /** The player closed the emulator, to choose how to link again. */
   @Output() closed = new EventEmitter<void>();
 
@@ -35,13 +40,23 @@ export class EmulatorComponent implements OnInit, OnDestroy {
   // Where the emulator was in the page while it is in its window
   private placeholder: Comment | null = null;
   private readonly moveBackNow = () => this.moveBack();
+  // The window was open since it last closed
+  private windowOpened = false;
 
   constructor(protected service: EmulatorService, protected emulatorWindow: EmulatorWindowService,
               private toast: ToastService, private host: ElementRef<HTMLElement>) {
     effect(() => {
       const win = this.emulatorWindow.window();
-      if (win) this.moveInto(win);
-      else this.moveBack();
+      untracked(() => {
+        if (win) {
+          this.windowOpened = true;
+          this.moveInto(win);
+          return;
+        }
+        this.moveBack();
+        if (this.windowOpened && this.windowOnly) this.service.close();
+        this.windowOpened = false;
+      });
     });
   }
 
@@ -169,6 +184,8 @@ export class EmulatorComponent implements OnInit, OnDestroy {
   protected closeEmulator(): void {
     if (this.fullscreen) this.exitFullscreen();
     this.service.close();
+    // Out of its window the game is gone, and the page shows choosing a game again
+    if (this.windowOnly && this.popped()) return;
     this.closed.emit();
   }
 

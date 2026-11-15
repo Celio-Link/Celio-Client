@@ -1,5 +1,7 @@
 :host {
   display: block;
+  /* The Game Boy Player frame around the screen: its size, and where the 3:2 screen sits in it */
+  --emu-aspect: calc(582 / 428);
 }
 
 .emu-drop {
@@ -24,7 +26,7 @@
 /* Beside the page's steps: as large as the window's height leaves room for, with the buttons below */
 @media (pointer: fine) {
   .emu-root:not(.emu-full) .emu-game {
-    max-width: min(100%, calc((100dvh - 16rem) * 1.5));
+    max-width: min(100%, calc((100dvh - 16rem) * var(--emu-aspect)));
   }
 }
 
@@ -34,14 +36,30 @@
   }
 }
 
-.emu-screen canvas {
-  display: block;
+.emu-frame {
+  position: relative;
   width: 100%;
-  height: auto;
-  aspect-ratio: 3 / 2;
+  aspect-ratio: 582 / 428;
+}
+
+.emu-frame-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  pointer-events: none;
+}
+
+.emu-frame canvas {
+  position: absolute;
+  left: 10.8247%;
+  top: 14.486%;
+  width: 78.3505%;
+  height: 71.028%;
+  display: block;
   image-rendering: pixelated;
   background: #000;
-  border-radius: 0.5rem;
 }
 
 .emu-toolbar {
@@ -173,7 +191,7 @@
 }
 
 .emu-full .emu-screen {
-  max-width: min(100%, calc((100vh - 5rem) * 1.5));
+  max-width: min(100%, calc((100vh - 5rem) * var(--emu-aspect)));
 }
 
 .emu-full .emu-hint {
@@ -182,7 +200,7 @@
 
 @media (pointer: coarse) {
   .emu-full .emu-screen {
-    max-width: min(100%, calc((100vh - 22rem) * 1.5));
+    max-width: min(100%, calc((100vh - 22rem) * var(--emu-aspect)));
   }
 
   .emu-full .emu-touch {
@@ -194,7 +212,7 @@
 /* Full screen held sideways: the picture as tall as it fits, the buttons either side of it as on a GBA */
 @media (pointer: coarse) and (orientation: landscape) {
   .emu-full .emu-screen {
-    max-width: min(calc(100vw - 21rem), calc((100dvh - 4rem) * 1.5));
+    max-width: min(calc(100vw - 21rem), calc((100dvh - 4rem) * var(--emu-aspect)));
   }
 
   .emu-full .emu-touch {
@@ -280,6 +298,6 @@
   justify-content: center;
 }
 
-.emu-popped:not(.emu-full) .emu-screen canvas {
-  width: min(100cqw, 150cqh);
+.emu-popped:not(.emu-full) .emu-frame {
+  width: min(100cqw, calc(100cqh * var(--emu-aspect)));
 }

@@ -34,10 +34,25 @@
         }
       </div>
     </div>
+  } @else if (windowOnly && !popped()) {
+    <!-- Dropped or picked files don't count as a click, which browsers need to open a window -->
+    <div class="box relative">
+      <div class="flex flex-col gap-3 py-2">
+        <p class="font-Gen3 text-3xl sm:text-4xl">Your game is ready</p>
+        <p class="font-Gen3 text-2xl">It plays in a window of its own.</p>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="btn" (click)="emulatorWindow.open()">Open game window</button>
+          <button type="button" class="btn" (click)="changeGame()" [disabled]="linked">Change game</button>
+        </div>
+      </div>
+    </div>
   } @else {
     <div class="emu-game">
       <div class="emu-screen">
-        <canvas #screen width="240" height="160" aria-label="Game screen"></canvas>
+        <div class="emu-frame">
+          <img class="emu-frame-art" src="assets/emulator/gbp-purple.png" alt="" draggable="false">
+          <canvas #screen width="240" height="160" aria-label="Game screen"></canvas>
+        </div>
       </div>
 
       <div class="emu-touch" #touch aria-hidden="true">
@@ -68,7 +83,7 @@
         @if (!emulatorWindow.pictureInPicture()) {
           <button type="button" class="btn btn-sm text-xl emu-full-keep" (click)="toggleFullscreen()">{{ fullscreen ? 'Exit full screen' : 'Full screen' }}</button>
         }
-        @if (popped()) {
+        @if (popped() && !windowOnly) {
           <button type="button" class="btn btn-sm text-xl" (click)="backToPage()">Back to page</button>
         }
         <button type="button" class="btn btn-sm text-xl" (click)="service.downloadSave()">

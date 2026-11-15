@@ -1,10 +1,11 @@
-import {inject} from '@angular/core';
+import {EffectRef, Injector, effect, inject, untracked} from '@angular/core';
 import {Subscription} from 'rxjs';
 import {StepsState} from '../stepsState';
 import {EmulatorShim} from './emulator.abstract';
 import {SupportedEmulators} from '../../../services/emulatorSelection.service';
 import {LinkDeviceService} from '../../../services/linkdevice.service';
 import {EmulatorService} from '../../../services/emulator.service';
+import {EmulatorWindowService} from '../../../services/emulatorWindow.service';
 import {ToastService} from '../../../services/toast.service';
 import {CancelCommand} from '../../../shared/linkExchange/common';
 import {LinkDeviceUtils} from '../../../shared/linkDeviceUtils';
@@ -19,7 +20,12 @@ export class BrowserEmulatorShim extends EmulatorShim {
 
   private linkDeviceService = inject(LinkDeviceService);
   private emulatorService = inject(EmulatorService);
+  private emulatorWindow = inject(EmulatorWindowService);
   private toastService = inject(ToastService);
+  private injector = inject(Injector);
+
+  /** Follows the game being loaded and closed. */
+  private gameWatch: EffectRef | null = null;
 
   private localLink: LocalLinkSession | null = null;
   private localLinkClosed: Subscription | null = null;
@@ -28,6 +34,7 @@ export class BrowserEmulatorShim extends EmulatorShim {
     return [
       StepsState.ConnectingCelioDevice,
       StepsState.ChooseEmulator,
+      StepsState.DownloadPlugin,
       StepsState.SettingLinkMode,
       StepsState.Ready,
     ];
@@ -39,10 +46,30 @@ export class BrowserEmulatorShim extends EmulatorShim {
     return false;
   }
 
-  /** It needs no script or server: once it loaded, its setup is done and it can start as soon as its game runs. */
+  /** It needs no script or server: once it loaded, its setup is done. Choosing the game is the step before Start. */
   begin(): void {
     this.markSetupDone();
-    this.host.advance(StepsState.SettingLinkMode);
+    this.host.advance(this.emulatorService.game() ? StepsState.SettingLinkMode : StepsState.DownloadPlugin);
+    this.gameWatch ??= effect(() => {
+      const hasGame = !!this.emulatorService.game();
+      untracked(() => this.gameChanged(hasGame));
+    }, {injector: this.injector});
+  }
+
+  /**
+   * Loading a game moves on to Start, with the game in a window of its own; closing or changing
+   * it goes back to choosing one, in the page.
+   */
+  private gameChanged(hasGame: boolean): void {
+    if (hasGame && this.host.isCurrentlyIn(StepsState.DownloadPlugin)) {
+      // Browsers only open a window shortly after a click: when this one comes too late, Start opens it
+      this.emulatorWindow.open();
+      this.host.advance(StepsState.SettingLinkMode);
+    } else if (!hasGame && this.host.hasReached(StepsState.SettingLinkMode)) {
+      this.endLink();
+      this.emulatorWindow.close();
+      this.host.advance(StepsState.DownloadPlugin);
+    }
   }
 
   resume(): boolean {
@@ -59,6 +86,8 @@ export class BrowserEmulatorShim extends EmulatorShim {
   startLinkMode(): void {
     const adapter = this.emulatorService.linkAdapter;
     if (!adapter || !this.canStartLinkMode() || this.localLink) return;
+    // Straight from the click on Start: the window opens even where loading the game was too late for it
+    this.emulatorWindow.open();
     // The GBA on the GB-Link is seat 0 and leads: a throttled page then slows only its own game, never the GBA's link
     const devices = [new StatusEmitterLinkDevice(this.linkDeviceService), new StatusEmitterEmulator(adapter)];
     const localLink = this.localLink = new LocalLinkSession(devices);
@@ -82,7 +111,10 @@ export class BrowserEmulatorShim extends EmulatorShim {
   }
 
   dispose(): void {
+    this.gameWatch?.destroy();
+    this.gameWatch = null;
     this.endLink();
+    this.emulatorWindow.close();
   }
 
   /** Ends the link between the GBA and the game in the page. False when there was none. */

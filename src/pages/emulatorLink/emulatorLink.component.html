@@ -2,7 +2,7 @@
   <ul class="steps w-full steps-horizontal overflow-x-auto">
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect<span class="hidden sm:inline"> Device</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Choose<span class="hidden sm:inline"> Emulator</span></li>
-    <li *ngIf="showsStep(StepsState.DownloadPlugin)" class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Load<span class="hidden sm:inline"> Script</span></li>
+    <li *ngIf="showsStep(StepsState.DownloadPlugin)" class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Load<span class="hidden sm:inline"> {{ browser ? 'Game' : 'Script' }}</span></li>
     <li *ngIf="showsStep(StepsState.WaitForLocalServer)" class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait<span class="hidden sm:inline"> for Server</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Start<span class="hidden sm:inline"> Link Mode</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 5 }">Ready</li>
@@ -11,17 +11,13 @@
   <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
   <div class="divider"></div>
 
-  <div [ngClass]="browser ? 'grid gap-6 items-start lg:grid-cols-[minmax(0,11fr)_minmax(20rem,9fr)]' : ''">
-    <celio-emulator *ngIf="browser"
-                    [linked]="hasReached(StepsState.Ready)"
-                    (closed)="emulatorClosed()"></celio-emulator>
-
+  <div>
     <div class="min-w-0">
       <celio-connection-panel [active]="isCurrentlyIn(StepsState.ConnectingCelioDevice)"></celio-connection-panel>
 
       <div class="divider"></div>
 
-      <div *ngIf="!browser" [class.opacity-100]="hasReached(StepsState.ChooseEmulator)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+      <div [class.opacity-100]="hasReached(StepsState.ChooseEmulator)" class="transition-opacity opacity-0 duration-500 ease-in-out">
         <div class="box relative">
 
           <div *ngIf="isCurrentlyIn(StepsState.ChooseEmulator)" class="flex flex-col gap-3 w-full min-h-[5rem] pb-8">
@@ -38,7 +34,7 @@
           <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex w-full min-h-[5rem]">
             <div *ngIf="hasReached(StepsState.ChooseEmulator)" class="font-Gen3 text-4xl">
               Selected emulator: <br>
-              mGBA
+              {{ browser ? 'In your browser' : 'mGBA' }}
             </div>
           </div>
           <img *ngIf="isCurrentlyIn(StepsState.ChooseEmulator)" src="assets/down_arrow.png" class="animate-bob absolute bottom-3 right-2 w-6 h-6 image-pixelated" />
@@ -48,6 +44,21 @@
       </div>
 
       <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
+
+      <div *ngIf="browser" [class.opacity-100]="hasReached(StepsState.DownloadPlugin)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+        <celio-emulator [linked]="hasReached(StepsState.Ready)" [windowOnly]="true" (closed)="emulatorClosed()"></celio-emulator>
+        <div *ngIf="emulatorWindow.window()" class="box relative">
+          <div class="flex flex-col gap-3 w-full min-h-[5rem]">
+            <div class="font-Gen3 text-4xl">
+              Your game runs in its own window.
+            </div>
+            <div>
+              <button (click)="emulatorWindow.open()" class="btn btn-sm text-2xl">Show window</button>
+            </div>
+          </div>
+        </div>
+        <div class="divider"></div>
+      </div>
 
       <div *ngIf="!browser" [class.opacity-100]="hasReached(StepsState.DownloadPlugin)" class="transition-opacity opacity-0 duration-500 ease-in-out">
         <div class="box relative">
@@ -91,7 +102,7 @@
 
       <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
 
-      <div *ngIf="!(browser && hasReached(StepsState.Ready))" [class.opacity-100]="hasReached(StepsState.SettingLinkMode)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+      <div [class.opacity-100]="hasReached(StepsState.SettingLinkMode)" class="transition-opacity opacity-0 duration-500 ease-in-out">
         <div class="box relative">
           <div class="flex w-full h-[5rem]">
             <div class="card rounded-box grid h-20 grow place-items-center">
@@ -102,22 +113,12 @@
           </div>
         </div>
       </div>
-
-      <div *ngIf="browser && hasReached(StepsState.Ready)" class="box relative @container flex flex-col gap-2 mt-4">
-        <p class="font-Gen3 text-xl @xs:text-2xl @lg:text-3xl">
-          Link Mode is ready. With the link cable in your Game Boy Advance, talk to the Cable Club attendant on the second
-          floor of a Pokémon Center in both games.
-        </p>
-        <div>
-          <button (click)="disconnect()" class="btn btn-sm @xs:btn-md @lg:btn-lg btn-dash btn-error text-xl @lg:text-2xl">Disconnect</button>
-        </div>
-      </div>
     </div>
   </div>
 
   <!--////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////-->
 
-  <div *ngIf="!browser && hasReached(StepsState.Ready)"
+  <div *ngIf="hasReached(StepsState.Ready)"
        class="fixed inset-0 bg-black/70 z-[9999] flex items-center justify-center transition-opacity duration-500 ease-in-out">
 
     <div class="card rounded-box bg-base-100 w-full max-w-screen-xl mx-auto flex flex-col items-center justify-between p-4 sm:p-8 relative">

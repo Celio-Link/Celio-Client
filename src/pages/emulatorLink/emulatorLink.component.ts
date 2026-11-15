@@ -6,6 +6,7 @@ import {CelioPageAbstract} from '../shared/celioPage.abstact';
 import {EmulatorSelectionService, SupportedEmulators} from '../../services/emulatorSelection.service';
 import {CelioConnectionStatusComponent} from '../../component/panel/connect/connect.component';
 import {EmulatorComponent} from '../../component/emulator/emulator.component';
+import {EmulatorWindowService} from '../../services/emulatorWindow.service';
 import {StepsState} from './stepsState';
 import {EmulatorShim, EmulatorShimHost} from './emulators/emulator.abstract';
 import {BrowserEmulatorShim} from './emulators/emulator.browser';
@@ -29,6 +30,7 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
   private linkDeviceService = inject(LinkDeviceService)
   private emulatorSelection = inject(EmulatorSelectionService)
   private injector = inject(EnvironmentInjector)
+  protected emulatorWindow = inject(EmulatorWindowService)
 
   protected StepsState = StepsState;
   protected readonly SupportedEmulators = SupportedEmulators;
