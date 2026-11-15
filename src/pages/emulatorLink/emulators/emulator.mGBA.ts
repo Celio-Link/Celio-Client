@@ -1,7 +1,7 @@
 import {inject} from '@angular/core';
 import {Subscription, take} from 'rxjs';
 import {StepsState} from '../stepsState';
-import {EmulatorShim} from './emulator.abstract';
+import {LocalEmulatorShim} from './emulator.abstract';
 import {LinkDeviceService} from '../../../services/linkdevice.service';
 import {SupportedEmulators} from '../../../services/emulatorSelection.service';
 import {ToastService} from '../../../services/toast.service';
@@ -12,7 +12,7 @@ import {CommandEmitterWebsocket} from '../../../shared/linkExchange/commandEmitt
 import {StatusEmitterLinkDevice} from '../../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
 
 /** The desktop mGBA: it links through our script, which runs a local server. */
-export class MGBAEmulatorShim extends EmulatorShim {
+export class MGBAEmulatorShim extends LocalEmulatorShim {
 
   readonly emulator = SupportedEmulators.mGBA;
 

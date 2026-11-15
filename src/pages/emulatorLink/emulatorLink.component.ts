@@ -8,7 +8,7 @@ import {CelioConnectionStatusComponent} from '../../component/panel/connect/conn
 import {EmulatorComponent} from '../../component/emulator/emulator.component';
 import {EmulatorWindowService} from '../../services/emulatorWindow.service';
 import {StepsState} from './stepsState';
-import {EmulatorShim, EmulatorShimHost} from './emulators/emulator.abstract';
+import {LocalEmulatorShim, LocalEmulatorShimHost} from './emulators/emulator.abstract';
 import {BrowserEmulatorShim} from './emulators/emulator.browser';
 import {MGBAEmulatorShim} from './emulators/emulator.mGBA';
 
@@ -35,8 +35,7 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
   protected StepsState = StepsState;
   protected readonly SupportedEmulators = SupportedEmulators;
 
-  /** The chosen emulator's steps; null until one is chosen. */
-  private shim: EmulatorShim | null = null;
+  private shim: LocalEmulatorShim | null = null;
 
   private disconnectSubscription: Subscription;
 
@@ -69,7 +68,6 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
     this.setShim(null);
   }
 
-  /** The emulator in the page was chosen: it links with the GBA on the GB-Link here, without a server. */
   protected get browser(): boolean {
     return this.shim instanceof BrowserEmulatorShim;
   }
@@ -93,14 +91,12 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
     shim.begin();
   }
 
-  /** Closing the emulator goes back to choosing one. */
   protected emulatorClosed(): void {
     this.setShim(null);
     this.emulatorSelection.setSelectedEmulator(SupportedEmulators.none);
     this.advanceLinkState(StepsState.ChooseEmulator);
   }
 
-  /** The emulator needs its game before the link mode can start. */
   protected gameMissing(): boolean {
     return !!this.shim && !this.shim.canStartLinkMode();
   }
@@ -113,8 +109,8 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
     this.shim?.disconnect();
   }
 
-  private createShim(emulator: SupportedEmulators): EmulatorShim | null {
-    const host: EmulatorShimHost = {
+  private createShim(emulator: SupportedEmulators): LocalEmulatorShim | null {
+    const host: LocalEmulatorShimHost = {
       advance: state => { if (this.shim === shim) this.advanceLinkState(state); },
       hasReached: state => this.hasReached(state),
       isCurrentlyIn: state => this.isCurrentlyIn(state),
@@ -129,7 +125,7 @@ export class EmulatorLinkComponent extends CelioPageAbstract<StepsState>{
     return shim;
   }
 
-  private setShim(shim: EmulatorShim | null): void {
+  private setShim(shim: LocalEmulatorShim | null): void {
     if (this.shim && this.shim !== shim) this.shim.dispose();
     this.shim = shim;
   }

@@ -1,7 +1,7 @@
 import {EffectRef, Injector, effect, inject, untracked} from '@angular/core';
 import {Subscription} from 'rxjs';
 import {StepsState} from '../stepsState';
-import {EmulatorShim} from './emulator.abstract';
+import {LocalEmulatorShim} from './emulator.abstract';
 import {SupportedEmulators} from '../../../services/emulatorSelection.service';
 import {LinkDeviceService} from '../../../services/linkdevice.service';
 import {EmulatorService} from '../../../services/emulator.service';
@@ -14,7 +14,7 @@ import {StatusEmitterLinkDevice} from '../../../shared/linkExchange/statusEmitte
 import {StatusEmitterEmulator} from '../../../shared/linkExchange/statusEmitter/statusEmitter.emulator';
 
 /** The emulator in the page: it links with the GBA on the GB-Link here, without a script or server. */
-export class BrowserEmulatorShim extends EmulatorShim {
+export class BrowserEmulatorShim extends LocalEmulatorShim {
 
   readonly emulator = SupportedEmulators.browser;
 
