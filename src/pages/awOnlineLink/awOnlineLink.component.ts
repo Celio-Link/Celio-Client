@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, inject, ViewChild} from '@angular/core';
+import {ChangeDetectorRef, Component, effect, inject, untracked, ViewChild} from '@angular/core';
 import { NgClass, NgIf } from '@angular/common';
 
 import {CancelCommand, LinkMode} from '../../shared/linkExchange/common';
@@ -17,6 +17,7 @@ import {CelioConnectionStatusComponent} from '../../component/panel/connect/conn
 import {CelioSessionComponent, SessionState} from '../../component/panel/session/session.compomemt';
 import {EmulatorComponent} from '../../component/emulator/emulator.component';
 import {EmulatorService} from '../../services/emulator.service';
+import {EmulatorWindowService} from '../../services/emulatorWindow.service';
 import {ToastService} from '../../services/toast.service';
 
 enum StepsState {
@@ -49,6 +50,7 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   private linkDeviceService = inject(LinkDeviceService)
   protected emulatorService = inject(EmulatorService)
+  protected emulatorWindow = inject(EmulatorWindowService)
 
   protected device: LinkDevice | null = null;
 
@@ -71,15 +73,18 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
       this.device = null;
       this.advanceLinkState(StepsState.ConnectingCelioDevice);
     })
+
+    effect(() => {
+      const hasGame = !!this.emulatorService.game()?.advanceWars;
+      untracked(() => this.gameChanged(hasGame));
+    });
   }
 
-  async ngOnInit() {
+  // The emulator is never picked up from an earlier visit: playing in the browser is always chosen anew
+  ngOnInit() {
     if (this.linkDeviceService.isConnected()) {
       this.device = 'usb';
       this.advanceLinkState(StepsState.SelectGame);
-    } else if (this.emulatorService.game()?.series === 'advanceWars') {
-      this.device = 'emulator';
-      this.advanceLinkState(StepsState.JoiningSession);
     }
   }
 
@@ -89,7 +94,10 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
     })
     this.sessionPanel.sessionStateChange.subscribe(state => {
       switch (state) {
-        case SessionState.Start: this.advanceLinkState(StepsState.JoiningSession); break;
+        case SessionState.Start:
+          // Leaving the session to choose another game stays at choosing it
+          if (this.hasReached(StepsState.JoiningSession)) this.advanceLinkState(StepsState.JoiningSession);
+          break;
         case SessionState.Waiting: this.advanceLinkState(StepsState.WaitingForPartner); break;
         case SessionState.Commit: this.advanceLinkState(StepsState.SettingLinkMode); break;
       }
@@ -115,14 +123,33 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
     this.advanceLinkState(StepsState.SelectGame);
   }
 
-  /** The emulator in the page is the device: the session can begin while the player chooses the game. */
+  /** The emulator in the page is the device: choosing its game is the step before the session. */
   protected async useEmulator(): Promise<void> {
     if (!await this.emulatorService.prepare()) {
       this.toastService.show('The emulator didn\'t load. Check your connection and try again.', 'error', 5000);
       return;
     }
+    // A game still loaded from earlier isn't used: the game is always chosen anew
+    this.emulatorService.close();
     this.device = 'emulator';
-    this.advanceLinkState(StepsState.JoiningSession);
+    this.advanceLinkState(StepsState.SelectGame);
+  }
+
+  /**
+   * Loading a game moves on to the session, with the game in a window of its own; closing or
+   * changing it leaves the session and goes back to choosing one, in the page.
+   */
+  private gameChanged(hasGame: boolean): void {
+    if (this.device !== 'emulator') return;
+    if (hasGame && this.isCurrentlyIn(StepsState.SelectGame)) {
+      // Browsers only open a window shortly after a click: when this one comes too late, Start opens it
+      this.emulatorWindow.open();
+      this.advanceLinkState(StepsState.JoiningSession);
+    } else if (!hasGame && this.hasReached(StepsState.JoiningSession)) {
+      this.emulatorWindow.close();
+      this.advanceLinkState(StepsState.SelectGame);
+      this.sessionPanel.leaveSession();
+    }
   }
 
   /** Closing the emulator goes back to choosing how to link. */
@@ -155,6 +182,8 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   start() {
     if (this.gameMissing()) return;
+    // Straight from the click on Start: the window opens even where loading the game was too late for it
+    if (this.device === 'emulator') this.emulatorWindow.open();
     const variant = this.device === 'emulator' ? this.emulatorService.game()?.advanceWars?.variant : this.awVariant;
     const device = this.createStatusEmitter();
     LinkDeviceUtils.tryEnableLinkMode(device, LinkMode.advanceWars, variant)

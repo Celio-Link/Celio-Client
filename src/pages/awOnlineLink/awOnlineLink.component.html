@@ -1,7 +1,7 @@
 <div class="flex w-full flex-col">
   <ul class="steps w-full steps-horizontal overflow-x-auto">
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 0 }">Connect<span class="hidden sm:inline"> Device</span></li>
-    <li *ngIf="device !== 'emulator'" class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Select<span class="hidden sm:inline"> Game</span></li>
+    <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 1 }">Select<span class="hidden sm:inline"> Game</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 2 }">Join<span class="hidden sm:inline"> Session</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 3 }">Wait<span class="hidden sm:inline"> for Partner</span></li>
     <li class="step font-Gen3 text-lg sm:text-2xl" [ngClass]="{ 'step-primary': stepState >= 4 }">Start<span class="hidden sm:inline"> Link Mode</span></li>
@@ -10,18 +10,38 @@
 
   <div class="divider"></div>
 
-  <div [ngClass]="device === 'emulator' ? 'grid gap-6 items-start lg:grid-cols-[minmax(0,11fr)_minmax(20rem,9fr)]' : ''">
-    <celio-emulator *ngIf="device === 'emulator'" series="advanceWars"
-                    [linked]="hasReached(StepsState.Ready)"
-                    (closed)="emulatorClosed()"></celio-emulator>
-
+  <div>
     <div class="min-w-0">
-      <ng-container *ngIf="device !== 'emulator'">
-        <celio-connection-panel [active]="isCurrentlyIn(StepsState.ConnectingCelioDevice)" [offerEmulator]="true"
-                                (next)="usbConnected()" (useEmulator)="useEmulator()"></celio-connection-panel>
+      <celio-connection-panel *ngIf="device !== 'emulator'" [active]="isCurrentlyIn(StepsState.ConnectingCelioDevice)" [offerEmulator]="true"
+                              (next)="usbConnected()" (useEmulator)="useEmulator()"></celio-connection-panel>
 
+      <div *ngIf="device === 'emulator'" class="box relative">
+        <div class="flex w-full min-h-[5rem] py-2">
+          <div class="font-Gen3 text-4xl">
+            Device: <br>
+            In your browser
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div *ngIf="device === 'emulator'" [class.opacity-100]="hasReached(StepsState.SelectGame)" class="transition-opacity opacity-0 duration-500 ease-in-out">
+        <celio-emulator series="advanceWars" [linked]="hasReached(StepsState.Ready)" [windowOnly]="true" (closed)="emulatorClosed()"></celio-emulator>
+        <div *ngIf="emulatorWindow.window()" class="box relative">
+          <div class="flex flex-col gap-3 w-full min-h-[5rem]">
+            <div class="font-Gen3 text-4xl">
+              Your game runs in its own window.
+            </div>
+            <div>
+              <button (click)="emulatorWindow.open()" class="btn btn-sm text-2xl">Show window</button>
+            </div>
+          </div>
+        </div>
         <div class="divider"></div>
+      </div>
 
+      <ng-container *ngIf="device !== 'emulator'">
         <div [class.opacity-100]="hasReached(StepsState.SelectGame)" class="transition-opacity opacity-0 duration-500 ease-in-out">
           <div class="box relative">
             <div *ngIf="isCurrentlyIn(StepsState.SelectGame)" class="flex flex-col sm:flex-row w-full min-h-[5rem] gap-2 sm:gap-0">
