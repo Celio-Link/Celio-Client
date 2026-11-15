@@ -8,6 +8,7 @@
 }
 
 .emu-game {
+  container: emu / inline-size;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -24,7 +25,7 @@
 /* Beside the page's steps: as large as the window's height leaves room for, with the buttons below */
 @media (pointer: fine) {
   .emu-root:not(.emu-full) .emu-game {
-    max-width: min(100%, calc((100dvh - 16rem) * 1.5));
+    max-width: min(100%, calc((100dvh - 18rem) * 1.5));
   }
 }
 
@@ -44,10 +45,85 @@
   border-radius: 0.5rem;
 }
 
-.emu-toolbar {
+/* The game's title, with the sound and full screen buttons at its right */
+.emu-head {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
+  min-width: 0;
+}
+
+.emu-title {
+  min-width: 0;
+  margin: 0;
+}
+
+.emu-view {
+  display: flex;
+  flex: none;
+  gap: 0.25rem;
+}
+
+.emu-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 0.5rem;
+  color: var(--color-base-content);
+  opacity: 0.85;
+  cursor: pointer;
+}
+
+.emu-icon:hover {
+  background: color-mix(in oklab, currentColor 15%, transparent);
+  opacity: 1;
+}
+
+.emu-icon:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.emu-icon[aria-pressed="false"] {
+  opacity: 0.6;
+}
+
+.emu-icon svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+/* Download save, Load save and Reset in a row, then Change game and Close; two a row in a narrow column */
+.emu-toolbar {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.emu-toolbar > .btn {
+  grid-column: span 2;
+  padding-inline: 0.5rem;
+}
+
+.emu-toolbar > .btn:nth-of-type(n + 4) {
+  grid-column: span 3;
+}
+
+@container emu (max-width: 30rem) {
+  .emu-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .emu-toolbar > .btn,
+  .emu-toolbar > .btn:nth-of-type(n + 4) {
+    grid-column: auto;
+  }
+
+  .emu-toolbar > .btn:last-of-type {
+    grid-column: span 2;
+  }
 }
 
 /* The page's button colors don't change for disabled buttons */
@@ -64,11 +140,18 @@
   background: var(--color-warning);
 }
 
-/* Touch controls only where the screen is touched */
+/* Touch controls only where the screen is touched. The page scrolls from the space between them;
+   a touch on a button, the d-pad or A and B plays instead. */
 .emu-touch {
   display: none;
   user-select: none;
   -webkit-user-select: none;
+  touch-action: pan-y;
+}
+
+.emu-key,
+.emu-dpad,
+.emu-ab {
   touch-action: none;
 }
 
@@ -153,48 +236,97 @@
   border-radius: 50%;
 }
 
-/* Full screen: the picture as large as it fits, the buttons below */
+/* Full screen: only the picture, as large as it fits at its own shape, with the sound and full
+   screen buttons in a corner. Touch screens keep their controls. */
 .emu-full {
   position: fixed;
   inset: 0;
   z-index: 10000;
-  background: #000;
   display: flex;
-  align-items: center;
-  justify-content: center;
   padding: 0.5rem;
+  background: #000;
+  touch-action: none;
 }
 
 .emu-full .emu-game {
-  width: 100%;
-  height: 100%;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  gap: 0.5rem;
 }
 
-.emu-full .emu-screen {
-  max-width: min(100%, calc((100vh - 5rem) * 1.5));
-}
-
+.emu-full .emu-title,
+.emu-full .emu-toolbar,
 .emu-full .emu-hint {
   display: none;
 }
 
-@media (pointer: coarse) {
-  .emu-full .emu-screen {
-    max-width: min(100%, calc((100vh - 22rem) * 1.5));
+.emu-full .emu-head {
+  justify-content: flex-end;
+}
+
+.emu-full .emu-icon {
+  color: #fff;
+}
+
+.emu-full .emu-screen {
+  flex: 1;
+  min-height: 0;
+}
+
+.emu-full .emu-screen canvas {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: auto;
+  object-fit: contain;
+  border-radius: 0;
+}
+
+/* No touch controls: the buttons in a column at the top right, beside the picture */
+@media not all and (pointer: coarse) {
+  .emu-full .emu-game {
+    padding-inline: 3rem;
   }
 
-  .emu-full .emu-touch {
-    width: 100%;
-    max-width: 32rem;
+  .emu-full .emu-head {
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: 1;
+  }
+
+  .emu-full .emu-view {
+    flex-direction: column;
   }
 }
 
-/* Full screen held sideways: the picture as tall as it fits, the buttons either side of it as on a GBA */
-@media (pointer: coarse) and (orientation: landscape) {
+/* Upright: the buttons above the picture, the controls in the middle of the space below it */
+@media (pointer: coarse) {
   .emu-full .emu-screen {
-    max-width: min(calc(100vw - 21rem), calc((100dvh - 4rem) * 1.5));
+    flex: 0 1 auto;
+    aspect-ratio: 3 / 2;
+  }
+
+  .emu-full .emu-touch {
+    flex: 1 0 auto;
+    align-content: center;
+    width: 100%;
+    max-width: 32rem;
+    margin-inline: auto;
+  }
+}
+
+/* Held sideways: the picture as tall as it fits, the controls either side of it as on a GBA,
+   the buttons above the picture */
+@media (pointer: coarse) and (orientation: landscape) {
+  .emu-full .emu-game {
+    padding-inline: 9.5rem;
+  }
+
+  .emu-full .emu-screen {
+    flex: 1 1 0;
+    aspect-ratio: auto;
   }
 
   .emu-full .emu-touch {
@@ -202,6 +334,7 @@
     inset: 0.75rem;
     width: auto;
     max-width: none;
+    margin: 0;
     display: block;
     pointer-events: none;
   }
@@ -249,10 +382,5 @@
 
   .emu-full .emu-ab .emu-key:last-child {
     margin-bottom: 1.5rem;
-  }
-
-  /* Under the picture only what playing needs */
-  .emu-full .emu-toolbar > :not(.emu-full-keep) {
-    display: none;
   }
 }

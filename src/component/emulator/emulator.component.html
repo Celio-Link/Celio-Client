@@ -39,6 +39,33 @@
     </div>
   } @else {
     <div class="emu-game">
+      <div class="emu-head">
+        <p class="emu-title font-Gen3 text-2xl truncate">{{ game()?.title }}</p>
+        <div class="emu-view">
+          <button type="button" class="emu-icon" (click)="toggleSound()" aria-label="Sound"
+                  [attr.aria-pressed]="!service.muted()" [title]="service.muted() ? 'Sound: off' : 'Sound: on'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M4 9h4l5-4v14l-5-4H4z"/>
+              @if (service.muted()) {
+                <path d="M17 9.5l5 5M22 9.5l-5 5"/>
+              } @else {
+                <path d="M16.5 9a4 4 0 0 1 0 6M19 6.5a7.5 7.5 0 0 1 0 11"/>
+              }
+            </svg>
+          </button>
+          <button type="button" class="emu-icon" (click)="toggleFullscreen()"
+                  [attr.aria-label]="fullscreen ? 'Exit full screen' : 'Full screen'" [title]="fullscreen ? 'Exit full screen' : 'Full screen'">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              @if (fullscreen) {
+                <path d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5"/>
+              } @else {
+                <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/>
+              }
+            </svg>
+          </button>
+        </div>
+      </div>
+
       <div class="emu-screen">
         <canvas #screen width="240" height="160" aria-label="Game screen"></canvas>
       </div>
@@ -67,8 +94,6 @@
       </div>
 
       <div class="emu-toolbar">
-        <button type="button" class="btn btn-sm text-xl emu-full-keep" (click)="toggleSound()">{{ service.muted() ? 'Sound off' : 'Sound on' }}</button>
-        <button type="button" class="btn btn-sm text-xl emu-full-keep" (click)="toggleFullscreen()">{{ fullscreen ? 'Exit full screen' : 'Full screen' }}</button>
         <button type="button" class="btn btn-sm text-xl" (click)="service.downloadSave()">
           Download save
           @if (service.unsaved()) {
