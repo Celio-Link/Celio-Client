@@ -20,7 +20,8 @@
       <div [class.opacity-100]="hasReached(StepsState.ChooseEmulator)" class="transition-opacity opacity-0 duration-500 ease-in-out">
         <div class="box relative">
 
-          <div *ngIf="isCurrentlyIn(StepsState.ChooseEmulator)" class="flex flex-col gap-3 w-full min-h-[5rem] pb-8">
+          <!-- As high as the Celio connection status: 5rem of content (a 2.5rem heading, 0.5rem gap and 2rem buttons) and py-2 -->
+          <div *ngIf="isCurrentlyIn(StepsState.ChooseEmulator)" class="flex flex-col gap-2 w-full min-h-[5rem] py-2">
             <div class="font-Gen3 text-4xl pr-8">
               Select Emulator:
             </div>
@@ -31,7 +32,7 @@
             </div>
           </div>
 
-          <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex w-full min-h-[5rem]">
+          <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex w-full min-h-[5rem] py-2">
             <div *ngIf="hasReached(StepsState.ChooseEmulator)" class="font-Gen3 text-4xl">
               Selected emulator: <br>
               {{ browser ? 'In your browser' : 'mGBA' }}
@@ -63,7 +64,7 @@
       <div *ngIf="!browser" [class.opacity-100]="hasReached(StepsState.DownloadPlugin)" class="transition-opacity opacity-0 duration-500 ease-in-out">
         <div class="box relative">
 
-          <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex flex-col gap-3 w-full min-h-[5rem] pb-8">
+          <div *ngIf="hasReached(StepsState.DownloadPlugin)" class="flex flex-col gap-2 w-full min-h-[5rem] py-2">
             <div class="font-Gen3 text-4xl pr-8">
               Load via Tools → Scripting... → File → Load script...
             </div>
