@@ -19,15 +19,18 @@
           <p class="font-Gen3 text-2xl mt-2">Kept in this browser</p>
           <ul class="flex flex-col gap-2">
             @for (stored of kept(); track stored.id) {
-              <li class="flex items-center gap-2">
-                <div class="grow min-w-0">
-                  <div class="font-Gen3 text-2xl truncate">{{ stored.title }}</div>
+              <!-- Play and Remove go below the title when there isn't room beside it -->
+              <li class="flex flex-wrap items-center gap-2">
+                <div class="grow basis-44 min-w-0">
+                  <div class="font-Gen3 text-2xl truncate contain-inline-size">{{ stored.title }}</div>
                   @if (stored.unsaved) {
-                    <span class="badge badge-warning font-Gen3 text-lg">Save not downloaded</span>
+                    <span class="badge badge-warning font-Gen3 text-lg whitespace-nowrap">Save not downloaded</span>
                   }
                 </div>
-                <button type="button" class="btn btn-sm text-2xl shrink-0" (click)="play(stored.id)" [disabled]="service.starting()">Play</button>
-                <button type="button" class="btn btn-sm text-2xl shrink-0" (click)="remove(stored.id, stored.unsaved)">Remove</button>
+                <div class="flex gap-2 shrink-0">
+                  <button type="button" class="btn btn-sm text-2xl" (click)="play(stored.id)" [disabled]="service.starting()">Play</button>
+                  <button type="button" class="btn btn-sm text-2xl" (click)="remove(stored.id, stored.unsaved)">Remove</button>
+                </div>
               </li>
             }
           </ul>
