@@ -16,7 +16,7 @@ import {GameSeries} from '../../emulator/emulatorGame';
 })
 export class EmulatorComponent implements OnInit, OnDestroy {
 
-  /** The games the page links: the emulator takes the ROMs of this series. */
+  /** The games the page links: the emulator links any ROM it plays as this series. */
   @Input() series: GameSeries = 'pokemon';
 
   /** The link mode is running: the game can't be changed, reset, given another save or closed. */
@@ -35,6 +35,11 @@ export class EmulatorComponent implements OnInit, OnDestroy {
   /** The emulator is in a window of its own. */
   protected readonly popped = signal(false);
 
+  /** The game plays only in its own window: where the browser has one for it (not on phones and tablets). */
+  protected get ownWindow(): boolean {
+    return this.windowOnly && this.emulatorWindow.available;
+  }
+
   private screenCanvas: HTMLCanvasElement | null = null;
   private touchArea: HTMLElement | null = null;
   // Where the emulator was in the page while it is in its window
@@ -42,6 +47,8 @@ export class EmulatorComponent implements OnInit, OnDestroy {
   private readonly moveBackNow = () => this.moveBack();
   // The window was open since it last closed
   private windowOpened = false;
+  // Full screen in the page for a game from a picture-in-picture window, which can't go full screen
+  private fullscreenFromWindow = false;
 
   constructor(protected service: EmulatorService, protected emulatorWindow: EmulatorWindowService,
               private toast: ToastService, private host: ElementRef<HTMLElement>) {
@@ -54,7 +61,7 @@ export class EmulatorComponent implements OnInit, OnDestroy {
           return;
         }
         this.moveBack();
-        if (this.windowOpened && this.windowOnly) this.service.close();
+        if (this.windowOpened && this.ownWindow && !this.fullscreenFromWindow) this.service.close();
         this.windowOpened = false;
       });
     });
@@ -150,7 +157,7 @@ export class EmulatorComponent implements OnInit, OnDestroy {
     if (!files.length) return;
     const romFile = files.find(f => !/\.sav$/i.test(f.name));
     const saveFile = files.find(f => /\.sav$/i.test(f.name));
-    if (romFile && saveFile && await this.service.hasUnsavedProgress(romFile, this.series)
+    if (romFile && saveFile && await this.service.hasUnsavedProgress(romFile)
         && !confirm('This browser keeps progress in this game that you haven\'t downloaded. Play from your save file instead?')) {
       return;
     }
@@ -160,10 +167,11 @@ export class EmulatorComponent implements OnInit, OnDestroy {
     }
     const result = await this.service.openFiles(files, this.series);
     if (!result.ok) this.toast.show(result.message, 'error', 5000);
+    else if (result.notice) this.toast.show(result.notice, 'warning', 6000);
   }
 
   protected async play(id: string): Promise<void> {
-    const result = await this.service.playStored(id);
+    const result = await this.service.playStored(id, this.series);
     if (!result.ok) this.toast.show(result.message, 'error', 5000);
   }
 
@@ -185,7 +193,7 @@ export class EmulatorComponent implements OnInit, OnDestroy {
     if (this.fullscreen) this.exitFullscreen();
     this.service.close();
     // Out of its window the game is gone, and the page shows choosing a game again
-    if (this.windowOnly && this.popped()) return;
+    if (this.ownWindow && this.popped()) return;
     this.closed.emit();
   }
 
@@ -193,10 +201,24 @@ export class EmulatorComponent implements OnInit, OnDestroy {
     this.service.setMuted(!this.service.muted());
   }
 
+  protected toggleFrame(): void {
+    this.service.setFrame(!this.service.frame());
+  }
+
   protected toggleFullscreen(): void {
     if (this.fullscreen) {
+      const backToWindow = this.fullscreenFromWindow;
       this.exitFullscreen();
+      // Straight from the click, which a window needs to open
+      if (backToWindow) this.emulatorWindow.open();
       return;
+    }
+    if (this.popped() && this.emulatorWindow.pictureInPicture()) {
+      // A picture-in-picture window can't go full screen: the game goes full screen in the page
+      // instead, and back into its window when full screen ends with this button
+      this.fullscreenFromWindow = true;
+      this.moveBack();
+      this.emulatorWindow.close();
     }
     this.fullscreen = true;
     this.host.nativeElement.requestFullscreen?.().catch(() => {});
@@ -204,12 +226,15 @@ export class EmulatorComponent implements OnInit, OnDestroy {
 
   private exitFullscreen(): void {
     this.fullscreen = false;
+    this.fullscreenFromWindow = false;
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   }
 
   @HostListener('document:fullscreenchange')
   protected onFullscreenChange(): void {
-    if (!document.fullscreenElement) this.fullscreen = false;
+    if (document.fullscreenElement) return;
+    this.fullscreen = false;
+    this.fullscreenFromWindow = false;
   }
 
   @HostListener('document:keydown.escape')

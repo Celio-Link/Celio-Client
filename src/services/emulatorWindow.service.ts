@@ -21,6 +21,11 @@ export class EmulatorWindowService {
   readonly window = signal<Window | null>(null);
   /** The window is a picture-in-picture window (it can't go full screen). */
   readonly pictureInPicture = signal(false);
+  /**
+   * The game can have a window of its own. Phones and tablets open a window as another tab, where
+   * the game would pause whenever the page is in front: there it plays in the page.
+   */
+  readonly available = !window.matchMedia('(pointer: coarse)').matches;
 
   private cleanup: (() => void) | null = null;
 
@@ -31,6 +36,7 @@ export class EmulatorWindowService {
 
   /** Opens the window. Call straight from a click: browsers only open windows for one. */
   open(): void {
+    if (!this.available) return;
     const open = this.window();
     if (open) {
       open.focus();
