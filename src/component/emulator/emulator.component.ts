@@ -1,5 +1,6 @@
-import {Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild, computed} from '@angular/core';
+import {Component, ElementRef, EventEmitter, HostListener, Input, OnDestroy, OnInit, Output, ViewChild, computed, effect, signal, untracked} from '@angular/core';
 import {EmulatorService} from '../../services/emulator.service';
+import {EmulatorWindowService} from '../../services/emulatorWindow.service';
 import {ToastService} from '../../services/toast.service';
 import {GameSeries} from '../../emulator/emulatorGame';
 
@@ -11,25 +12,93 @@ import {GameSeries} from '../../emulator/emulatorGame';
   selector: 'celio-emulator',
   templateUrl: './emulator.component.html',
   styleUrl: './emulator.component.css',
+  host: { '[class.emu-host-popped]': 'popped()' },
 })
 export class EmulatorComponent implements OnInit, OnDestroy {
 
-  /** The games the page links: the emulator takes the ROMs of this series. */
+  /** The games the page links: the emulator links any ROM it plays as this series. */
   @Input() series: GameSeries = 'pokemon';
 
   /** The link mode is running: the game can't be changed, reset, given another save or closed. */
   @Input() linked = false;
+  /**
+   * The game only plays in its own window and never goes back into the page: closing the window,
+   * or putting it back into the page, closes the game.
+   */
+  @Input() windowOnly = false;
   /** The player closed the emulator, to choose how to link again. */
   @Output() closed = new EventEmitter<void>();
 
   protected fullscreen = false;
   protected dragging = false;
   protected readonly game = computed(() => this.service.game());
+  /** The emulator is in a window of its own. */
+  protected readonly popped = signal(false);
+
+  /** The game plays only in its own window: where the browser has one for it (not on phones and tablets). */
+  protected get ownWindow(): boolean {
+    return this.windowOnly && this.emulatorWindow.available;
+  }
 
   private screenCanvas: HTMLCanvasElement | null = null;
   private touchArea: HTMLElement | null = null;
+  // Where the emulator was in the page while it is in its window
+  private placeholder: Comment | null = null;
+  private readonly moveBackNow = () => this.moveBack();
+  // The window was open since it last closed
+  private windowOpened = false;
+  // Full screen in the page for a game from a picture-in-picture window, which can't go full screen
+  private fullscreenFromWindow = false;
 
-  constructor(protected service: EmulatorService, private toast: ToastService, private host: ElementRef<HTMLElement>) {}
+  constructor(protected service: EmulatorService, protected emulatorWindow: EmulatorWindowService,
+              private toast: ToastService, private host: ElementRef<HTMLElement>) {
+    effect(() => {
+      const win = this.emulatorWindow.window();
+      untracked(() => {
+        if (win) {
+          this.windowOpened = true;
+          this.moveInto(win);
+          return;
+        }
+        this.moveBack();
+        if (this.windowOpened && this.ownWindow && !this.fullscreenFromWindow) this.service.close();
+        this.windowOpened = false;
+      });
+    });
+  }
+
+  /** Moves the emulator into its window; the game keeps running in the page. */
+  private moveInto(win: Window): void {
+    const el = this.host.nativeElement;
+    if (el.ownerDocument === win.document || !el.parentNode) return;
+    if (this.fullscreen) this.exitFullscreen();
+    this.placeholder = document.createComment('celio-emulator');
+    el.before(this.placeholder);
+    win.document.body.append(el);
+    // While the window closes its page is still there to take the emulator out of
+    win.addEventListener('pagehide', this.moveBackNow, { once: true });
+    this.popped.set(true);
+    this.reattach();
+  }
+
+  private moveBack(): void {
+    if (!this.placeholder) return;
+    const el = this.host.nativeElement;
+    el.ownerDocument.defaultView?.removeEventListener('pagehide', this.moveBackNow);
+    this.placeholder.replaceWith(el);
+    this.placeholder = null;
+    this.popped.set(false);
+    this.reattach();
+  }
+
+  /** The screen is in another window now: the keys and frames come from there. */
+  private reattach(): void {
+    if (this.screenCanvas) this.attach();
+  }
+
+  protected backToPage(): void {
+    this.emulatorWindow.close();
+  }
 
   @ViewChild('screen') set screen(ref: ElementRef<HTMLCanvasElement> | undefined) {
     this.screenCanvas = ref?.nativeElement ?? null;
@@ -56,8 +125,14 @@ export class EmulatorComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // Nothing to show the game on any more, also once it is back in the page
+    this.screenCanvas = null;
+    this.touchArea = null;
     this.service.detachView();
     if (this.fullscreen) this.exitFullscreen();
+    // Back into the page, for Angular to take it out of there
+    this.moveBack();
+    this.emulatorWindow.close();
   }
 
   protected async onFiles(event: Event): Promise<void> {
@@ -82,7 +157,7 @@ export class EmulatorComponent implements OnInit, OnDestroy {
     if (!files.length) return;
     const romFile = files.find(f => !/\.sav$/i.test(f.name));
     const saveFile = files.find(f => /\.sav$/i.test(f.name));
-    if (romFile && saveFile && await this.service.hasUnsavedProgress(romFile, this.series)
+    if (romFile && saveFile && await this.service.hasUnsavedProgress(romFile)
         && !confirm('This browser keeps progress in this game that you haven\'t downloaded. Play from your save file instead?')) {
       return;
     }
@@ -92,10 +167,11 @@ export class EmulatorComponent implements OnInit, OnDestroy {
     }
     const result = await this.service.openFiles(files, this.series);
     if (!result.ok) this.toast.show(result.message, 'error', 5000);
+    else if (result.notice) this.toast.show(result.notice, 'warning', 6000);
   }
 
   protected async play(id: string): Promise<void> {
-    const result = await this.service.playStored(id);
+    const result = await this.service.playStored(id, this.series);
     if (!result.ok) this.toast.show(result.message, 'error', 5000);
   }
 
@@ -116,6 +192,8 @@ export class EmulatorComponent implements OnInit, OnDestroy {
   protected closeEmulator(): void {
     if (this.fullscreen) this.exitFullscreen();
     this.service.close();
+    // Out of its window the game is gone, and the page shows choosing a game again
+    if (this.ownWindow && this.popped()) return;
     this.closed.emit();
   }
 
@@ -123,10 +201,24 @@ export class EmulatorComponent implements OnInit, OnDestroy {
     this.service.setMuted(!this.service.muted());
   }
 
+  protected toggleFrame(): void {
+    this.service.setFrame(!this.service.frame());
+  }
+
   protected toggleFullscreen(): void {
     if (this.fullscreen) {
+      const backToWindow = this.fullscreenFromWindow;
       this.exitFullscreen();
+      // Straight from the click, which a window needs to open
+      if (backToWindow) this.emulatorWindow.open();
       return;
+    }
+    if (this.popped() && this.emulatorWindow.pictureInPicture()) {
+      // A picture-in-picture window can't go full screen: the game goes full screen in the page
+      // instead, and back into its window when full screen ends with this button
+      this.fullscreenFromWindow = true;
+      this.moveBack();
+      this.emulatorWindow.close();
     }
     this.fullscreen = true;
     this.host.nativeElement.requestFullscreen?.().catch(() => {});
@@ -134,12 +226,15 @@ export class EmulatorComponent implements OnInit, OnDestroy {
 
   private exitFullscreen(): void {
     this.fullscreen = false;
+    this.fullscreenFromWindow = false;
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   }
 
   @HostListener('document:fullscreenchange')
   protected onFullscreenChange(): void {
-    if (!document.fullscreenElement) this.fullscreen = false;
+    if (document.fullscreenElement) return;
+    this.fullscreen = false;
+    this.fullscreenFromWindow = false;
   }
 
   @HostListener('document:keydown.escape')

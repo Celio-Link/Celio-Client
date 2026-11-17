@@ -1,4 +1,4 @@
-import {ChangeDetectorRef, Component, inject, ViewChild} from '@angular/core';
+import {ChangeDetectorRef, Component, effect, inject, untracked, ViewChild} from '@angular/core';
 import { NgClass, NgIf } from '@angular/common';
 
 import {CancelCommand, LinkMode} from '../../shared/linkExchange/common';
@@ -17,7 +17,9 @@ import {CelioConnectionStatusComponent} from '../../component/panel/connect/conn
 import {CelioSessionComponent, SessionState} from '../../component/panel/session/session.compomemt';
 import {EmulatorComponent} from '../../component/emulator/emulator.component';
 import {EmulatorService} from '../../services/emulator.service';
+import {EmulatorWindowService} from '../../services/emulatorWindow.service';
 import {ToastService} from '../../services/toast.service';
+import {GameVariant} from '../../emulator/link/awProtocol';
 
 enum StepsState {
   ConnectingCelioDevice = 0,
@@ -49,11 +51,14 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
 
   private linkDeviceService = inject(LinkDeviceService)
   protected emulatorService = inject(EmulatorService)
+  protected emulatorWindow = inject(EmulatorWindowService)
 
   protected device: LinkDevice | null = null;
 
   // Per-route (app.routes.ts): which firmware mode this page drives and the matching ready-screen copy.
   protected awVariant: number | undefined;
+  // The Advance Wars the emulator's game links as, chosen by the player when neither its dump nor its header says
+  private chosenVariant: { crc32: string; variant: GameVariant } | undefined;
   protected readyInstruction: string | undefined;
   protected preStartInstruction: string | undefined;
 
@@ -71,15 +76,18 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
       this.device = null;
       this.advanceLinkState(StepsState.ConnectingCelioDevice);
     })
+
+    effect(() => {
+      const hasGame = !!this.emulatorService.game()?.advanceWars;
+      untracked(() => this.gameChanged(hasGame));
+    });
   }
 
-  async ngOnInit() {
+  // The emulator is never picked up from an earlier visit: playing in the browser is always chosen anew
+  ngOnInit() {
     if (this.linkDeviceService.isConnected()) {
       this.device = 'usb';
       this.advanceLinkState(StepsState.SelectGame);
-    } else if (this.emulatorService.game()?.series === 'advanceWars') {
-      this.device = 'emulator';
-      this.advanceLinkState(StepsState.JoiningSession);
     }
   }
 
@@ -89,7 +97,10 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
     })
     this.sessionPanel.sessionStateChange.subscribe(state => {
       switch (state) {
-        case SessionState.Start: this.advanceLinkState(StepsState.JoiningSession); break;
+        case SessionState.Start:
+          // Leaving the session to choose another game stays at choosing it
+          if (this.hasReached(StepsState.JoiningSession)) this.advanceLinkState(StepsState.JoiningSession);
+          break;
         case SessionState.Waiting: this.advanceLinkState(StepsState.WaitingForPartner); break;
         case SessionState.Commit: this.advanceLinkState(StepsState.SettingLinkMode); break;
       }
@@ -115,14 +126,33 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
     this.advanceLinkState(StepsState.SelectGame);
   }
 
-  /** The emulator in the page is the device: the session can begin while the player chooses the game. */
+  /** The emulator in the page is the device: choosing its game is the step before the session. */
   protected async useEmulator(): Promise<void> {
     if (!await this.emulatorService.prepare()) {
       this.toastService.show('The emulator didn\'t load. Check your connection and try again.', 'error', 5000);
       return;
     }
+    // A game still loaded from earlier isn't used: the game is always chosen anew
+    this.emulatorService.close();
     this.device = 'emulator';
-    this.advanceLinkState(StepsState.JoiningSession);
+    this.advanceLinkState(StepsState.SelectGame);
+  }
+
+  /**
+   * Loading a game moves on to the session, with the game in a window of its own; closing or
+   * changing it leaves the session and goes back to choosing one, in the page.
+   */
+  private gameChanged(hasGame: boolean): void {
+    if (this.device !== 'emulator') return;
+    if (hasGame && this.isCurrentlyIn(StepsState.SelectGame)) {
+      // Browsers only open a window shortly after a click: when this one comes too late, Start opens it
+      this.emulatorWindow.open();
+      this.advanceLinkState(StepsState.JoiningSession);
+    } else if (!hasGame && this.hasReached(StepsState.JoiningSession)) {
+      this.emulatorWindow.close();
+      this.advanceLinkState(StepsState.SelectGame);
+      this.sessionPanel.leaveSession();
+    }
   }
 
   /** Closing the emulator goes back to choosing how to link. */
@@ -132,9 +162,33 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
     this.advanceLinkState(StepsState.ConnectingCelioDevice);
   }
 
-  /** The emulator needs its game before the link mode can start: the game says which Advance Wars is linked. */
+  /** The emulator needs its game before the link mode can start. */
   protected gameMissing(): boolean {
-    return this.device === 'emulator' && !this.emulatorService.game()?.advanceWars;
+    return this.device === 'emulator' && !this.emulatorService.game();
+  }
+
+  /** The emulator's game doesn't say which Advance Wars it is, so the player chooses. */
+  protected variantUnknown(): boolean {
+    const game = this.emulatorService.game();
+    return this.device === 'emulator' && !!game && game.awVariant === undefined;
+  }
+
+  /** The emulator's game is loaded, but which Advance Wars it links as isn't chosen yet. */
+  protected variantMissing(): boolean {
+    return this.device === 'emulator' && !this.gameMissing() && this.emulatorVariant() === undefined;
+  }
+
+  /** The variant of the Advance Wars mode the emulator's game links with, once it is known. */
+  protected emulatorVariant(): GameVariant | undefined {
+    const game = this.emulatorService.game();
+    if (!game) return undefined;
+    if (game.awVariant !== undefined) return game.awVariant;
+    return this.chosenVariant?.crc32 === game.crc32 ? this.chosenVariant.variant : undefined;
+  }
+
+  protected chooseEmulatorVariant(variant: GameVariant) {
+    const game = this.emulatorService.game();
+    if (game) this.chosenVariant = { crc32: game.crc32, variant };
   }
 
   protected selectAwVariant(variant: number) {
@@ -154,8 +208,10 @@ export class AwOnlineLinkComponent extends CelioPageAbstract<StepsState>{
   }
 
   start() {
-    if (this.gameMissing()) return;
-    const variant = this.device === 'emulator' ? this.emulatorService.game()?.advanceWars?.variant : this.awVariant;
+    const variant = this.device === 'emulator' ? this.emulatorVariant() : this.awVariant;
+    if (this.device === 'emulator' && variant === undefined) return;
+    // Straight from the click on Start: the window opens even where loading the game was too late for it
+    if (this.device === 'emulator') this.emulatorWindow.open();
     const device = this.createStatusEmitter();
     LinkDeviceUtils.tryEnableLinkMode(device, LinkMode.advanceWars, variant)
       .then(() => {

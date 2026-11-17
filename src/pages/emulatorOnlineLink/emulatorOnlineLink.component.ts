@@ -1,33 +1,17 @@
-import {Component, ChangeDetectorRef, ViewChild, inject} from '@angular/core';
+import {Component, ChangeDetectorRef, ViewChild, inject, EnvironmentInjector, runInInjectionContext} from '@angular/core';
 import {NgClass, NgIf} from '@angular/common';
-import {Subscription, take} from 'rxjs';
 import {LinkExchangeSession} from '../../shared/linkExchange/linkExchangeSession';
 import {EmulatorSelectionService, SupportedEmulators} from '../../services/emulatorSelection.service';
-import {LinkDeviceUtils} from '../../shared/linkDeviceUtils';
-import {ToastComponent} from '../../component/toast/toast.component';
-import {PlayerSessionService} from '../../services/playersession.service';
 import {SocketIOService} from '../../services/socketIO.service';
-import {StatusEmitterWebsocket} from '../../shared/linkExchange/statusEmitter/statusEmitter.websocket';
 import {CommandEmitterSocketIO} from '../../shared/linkExchange/commandEmitter/commandEmitter.socketIO';
 import {CelioPageAbstract} from '../shared/celioPage.abstact';
-import {CelioSessionComponent, SessionState} from '../../component/panel/session/session.compomemt';
-import {StatusEmitterLinkDevice} from '../../shared/linkExchange/statusEmitter/statusEmitter.linkDevice';
-import {ToastService} from '../../services/toast.service';
-import {CancelCommand} from '../../shared/linkExchange/common';
-import {StatusEmitterAbstract} from '../../shared/linkExchange/statusEmitter/statusEmitter.abstract';
-import {StatusEmitterEmulator} from '../../shared/linkExchange/statusEmitter/statusEmitter.emulator';
+import {CelioSessionComponent} from '../../component/panel/session/session.compomemt';
 import {EmulatorComponent} from '../../component/emulator/emulator.component';
-import {EmulatorService} from '../../services/emulator.service';
-
-enum StepsState {
-  ChooseEmulator = 0,
-  DownloadPlugin = 1,
-  WaitForLocalServer = 2,
-  JoiningSession = 3,
-  WaitingForPartner = 4,
-  SettingLinkMode = 5,
-  Ready = 6
-}
+import {EmulatorWindowService} from '../../services/emulatorWindow.service';
+import {StepsState} from './stepsState';
+import {OnlineEmulatorShim, OnlineEmulatorShimHost} from './emulators/emulator.abstract';
+import {BrowserEmulatorShim} from './emulators/emulator.browser';
+import {MGBAEmulatorShim} from './emulators/emulator.mGBA';
 
 @Component({
   selector: 'app-tradeEmu',
@@ -43,174 +27,111 @@ enum StepsState {
 export class EmulatorOnlineLinkComponent extends CelioPageAbstract<StepsState>{
   @ViewChild(CelioSessionComponent) sessionPanel!: CelioSessionComponent;
 
+  private socket = inject(SocketIOService);
+  private emulatorSelection = inject(EmulatorSelectionService);
+  private injector = inject(EnvironmentInjector);
+  protected emulatorWindow = inject(EmulatorWindowService);
+
   protected StepsState = StepsState;
   protected readonly SupportedEmulators = SupportedEmulators;
 
-  protected closing: boolean = false;
-  protected timeoutId: number | undefined; //this is trash, pls fix
+  /** The chosen emulator's steps; null until one is chosen. */
+  private shim: OnlineEmulatorShim | null = null;
 
-  private statusEmitterWebsocket: StatusEmitterWebsocket | undefined = undefined;
-
-  protected emulatorService = inject(EmulatorService)
-  /** The emulator in the page was chosen: it is the device of the session, like a GBA on a GB-Link. */
-  protected browser = false;
-
-  constructor(cd: ChangeDetectorRef, private toastService: ToastService, private socket: SocketIOService, private emulatorSelection: EmulatorSelectionService) {
+  constructor(cd: ChangeDetectorRef) {
     super(cd);
     this.stepState = StepsState.ChooseEmulator;
   }
 
   ngOnInit() {
-    if (this.emulatorSelection.getSelectedEmulator() === SupportedEmulators.browser && this.emulatorService.game()) {
-      this.browser = true;
-      this.advanceLinkState(StepsState.JoiningSession);
-    } else if (this.emulatorSelection.isSetupComplete()) { this.startWaitForServer() }
+    const shim = this.createShim(this.emulatorSelection.getSelectedEmulator());
+    if (!shim) return;
+    this.shim = shim;
+    if (!shim.resume()) {
+      this.shim = null;
+      shim.dispose();
+    }
   }
 
   ngAfterViewInit() {
     this.sessionPanel.createSessionEvent.subscribe(() => {
-      if (this.browser) {
-        this.sessionPanel.setLinkSession(new LinkExchangeSession(new CommandEmitterSocketIO(this.socket), this.browserDevice()));
-        return;
-      }
-      if (this.statusEmitterWebsocket == undefined) return;
-      this.sessionPanel.setLinkSession(new LinkExchangeSession(new CommandEmitterSocketIO(this.socket), this.statusEmitterWebsocket))
+      const device = this.shim?.sessionDevice();
+      if (device) this.sessionPanel.setLinkSession(new LinkExchangeSession(new CommandEmitterSocketIO(this.socket), device));
     })
-    this.sessionPanel.sessionStateChange.subscribe(state => {
-      if (this.browser) {
-        switch (state) {
-          case SessionState.Start: this.advanceLinkState(StepsState.JoiningSession); break;
-          case SessionState.Waiting: this.advanceLinkState(StepsState.WaitingForPartner); break;
-          case SessionState.Commit: this.advanceLinkState(StepsState.SettingLinkMode); break;
-        }
-        return;
-      }
-      switch (state) {
-        case SessionState.Start:
-          this.advanceLinkState(StepsState.JoiningSession);
-          this.statusEmitterWebsocket?.destroy();
-          break;
-        case SessionState.Waiting:
-          if (this.stepState == StepsState.Ready) {
-            this.statusEmitterWebsocket?.destroy();
-          } else {
-            this.advanceLinkState(StepsState.WaitingForPartner);
-          }
-          break;
-        case SessionState.Commit: this.advanceLinkState(StepsState.SettingLinkMode); break;
-      }
-    })
+    this.sessionPanel.sessionStateChange.subscribe(state => this.shim?.sessionStateChanged(state))
   }
 
   ngOnDestroy() {
-    this.closing = true;
-    this.statusEmitterWebsocket?.destroy();
-    if (this.browser) this.sessionPanel.leaveSession();
+    this.setShim(null);
   }
 
-  emulatorSelected(emulator: SupportedEmulators) {
-    this.emulatorSelection.setSelectedEmulator(emulator)
-    this.advanceLinkState(StepsState.DownloadPlugin)
+  /** The emulator in the page was chosen: it is the device of the session, like a GBA on a GB-Link. */
+  protected get browser(): boolean {
+    return this.shim instanceof BrowserEmulatorShim;
   }
 
-  /** The emulator in the page needs no script or local server: the session can begin while the player chooses the game. */
-  protected async browserSelected(): Promise<void> {
-    if (!await this.emulatorService.prepare()) {
-      this.toastService.show('The emulator didn\'t load. Check your connection and try again.', 'error', 5000);
+  protected get mgba(): MGBAEmulatorShim | null {
+    return this.shim instanceof MGBAEmulatorShim ? this.shim : null;
+  }
+
+  protected showsStep(state: StepsState): boolean {
+    return !this.shim || this.shim.supportedStates().includes(state);
+  }
+
+  protected async emulatorSelected(emulator: SupportedEmulators): Promise<void> {
+    const shim = this.createShim(emulator);
+    if (!shim) return;
+    if (!await shim.prepare()) {
+      shim.dispose();
       return;
     }
-    this.emulatorSelection.setSelectedEmulator(SupportedEmulators.browser);
-    this.browser = true;
-    this.advanceLinkState(StepsState.JoiningSession);
+    this.setShim(shim);
+    shim.begin();
   }
 
   /** Closing the emulator goes back to choosing one. */
   protected emulatorClosed(): void {
-    this.sessionPanel.leaveSession();
-    this.browser = false;
+    this.setShim(null);
     this.emulatorSelection.setSelectedEmulator(SupportedEmulators.none);
     this.advanceLinkState(StepsState.ChooseEmulator);
   }
 
   /** The emulator needs its game before the link mode can start. */
   protected gameMissing(): boolean {
-    return this.browser && !this.emulatorService.game();
-  }
-
-  private browserDevice(): StatusEmitterAbstract {
-    const adapter = this.emulatorService.linkAdapter;
-    // The page only goes on once the emulator has loaded
-    if (!adapter) throw new Error('The emulator has not loaded.');
-    return new StatusEmitterEmulator(adapter);
-  }
-
-  private cleanup() {
-    console.log("Cleanup");
-    this.sessionPanel.leaveSession();
-    if (!this.closing) this.startWaitForServer();
-  }
-
-  startWaitForServer(delay: number = 1000) {
-    this.emulatorSelection.setSetupComplete(true)
-    if (this.stepState == StepsState.WaitForLocalServer) return;
-
-    this.advanceLinkState(StepsState.WaitForLocalServer)
-    this.statusEmitterWebsocket = new StatusEmitterWebsocket();
-    this.statusEmitterWebsocket.close$()
-      .pipe(take(1))
-      .subscribe(() => {this.cleanup()});
-
-    this.closing = false;
-    this.timeoutId = setTimeout(() => {
-      this.statusEmitterWebsocket?.open().then(() => {
-        this.timeoutId = undefined;
-        this.statusEmitterWebsocket?.checkVersion().then((passedCheck) => {
-          console.log("Passed version check: " + passedCheck);
-          if (passedCheck) {
-            this.advanceLinkState(StepsState.JoiningSession)
-          } else {
-            this.emulatorSelection.setSetupComplete(false);
-            this.closing = true;
-            this.statusEmitterWebsocket?.destroy();
-            this.advanceLinkState(StepsState.DownloadPlugin)
-            this.toastService.show("Please download the newest script version.", 'error', 3000)
-          }
-        })
-
-      })
-    }, delay)
+    return !!this.shim && !this.shim.canStartLinkMode();
   }
 
   start() {
-    if (this.browser) {
-      if (this.gameMissing()) return;
-      const device = this.browserDevice();
-      LinkDeviceUtils.tryEnableLinkMode(device)
-        .then(() => this.advanceLinkState(StepsState.Ready))
-        .catch(error => {
-          this.toastService.show(String(error?.message ?? error), 'error', 4000);
-          this.disconnect();
-        })
-        .finally(() => device.destroy());
-      return;
-    }
-    LinkDeviceUtils.tryEnableLinkMode(this.statusEmitterWebsocket!)
-      .then(() => {
-        this.advanceLinkState(StepsState.Ready);
-      })
-      .catch(error => {
-        this.toastService.show(error, 'error', 4000)
-        this.statusEmitterWebsocket?.destroy();
-        console.error(error);
-      })
+    this.shim?.startLinkMode();
   }
 
   disconnect(): void {
-    if (this.browser) {
-      this.emulatorService.linkAdapter?.command(new CancelCommand());
-      this.sessionPanel.leaveSession();
-      return;
-    }
-    this.statusEmitterWebsocket?.destroy();
+    this.shim?.disconnect();
+  }
+
+  private createShim(emulator: SupportedEmulators): OnlineEmulatorShim | null {
+    const host: OnlineEmulatorShimHost = {
+      advance: state => { if (this.shim === shim) this.advanceLinkState(state); },
+      hasReached: state => this.hasReached(state),
+      isCurrentlyIn: state => this.isCurrentlyIn(state),
+      leaveSession: () => { if (this.shim === shim) this.sessionPanel.leaveSession(); },
+    };
+    const shim = runInInjectionContext(this.injector, () => {
+      switch (emulator) {
+        case SupportedEmulators.mGBA: return new MGBAEmulatorShim(host);
+        case SupportedEmulators.browser: return new BrowserEmulatorShim(host);
+        default: return null;
+      }
+    });
+    return shim;
+  }
+
+  /** The session links the old emulator's device: it ends with it. */
+  private setShim(shim: OnlineEmulatorShim | null): void {
+    const old = this.shim;
+    this.shim = shim;
+    if (!old || old === shim) return;
+    old.dispose();
+    this.sessionPanel?.leaveSession();
   }
 }

@@ -24,7 +24,7 @@ export class EmulatorInput {
   // The GBA key each held keyboard key presses, by its code
   private held = new Map<string, number>();
   private pointers = new Map<number, number>();
-  private padTimer: ReturnType<typeof setInterval> | null = null;
+  private padTimer: number | null = null;
   private readonly onKeyDown = (e: KeyboardEvent) => this.key(e, true);
   private readonly onKeyUp = (e: KeyboardEvent) => this.key(e, false);
   private readonly onBlur = () => { this.held.clear(); this.emulator.setKeys('keyboard', 0); };
@@ -33,16 +33,19 @@ export class EmulatorInput {
   private readonly onPointerEnd = (e: PointerEvent) => this.pointerEnd(e);
   private readonly onContextMenu = (e: Event) => e.preventDefault();
 
-  /** onGesture: a key or touch of the player's, which lets the page start its sound. */
+  /**
+   * onGesture: a key or touch of the player's, which lets the page start its sound.
+   * view: the window the game is shown in, which gets the player's keys.
+   */
   constructor(private emulator: GbaEmulator, private isActive: () => boolean, private touchArea: HTMLElement | null,
-              private onGesture: () => void) {}
+              private onGesture: () => void, private view: Window = window) {}
 
   attach(): void {
     // Capture, so the page's own key handlers see the event as handled
-    document.addEventListener('keydown', this.onKeyDown, true);
-    document.addEventListener('keyup', this.onKeyUp, true);
-    window.addEventListener('blur', this.onBlur);
-    window.addEventListener('gamepadconnected', this.onPad);
+    this.view.document.addEventListener('keydown', this.onKeyDown, true);
+    this.view.document.addEventListener('keyup', this.onKeyUp, true);
+    this.view.addEventListener('blur', this.onBlur);
+    this.view.addEventListener('gamepadconnected', this.onPad);
     this.watchGamepads();
     if (this.touchArea) {
       this.touchArea.addEventListener('pointerdown', this.onPointer);
@@ -53,11 +56,14 @@ export class EmulatorInput {
   }
 
   detach(): void {
-    document.removeEventListener('keydown', this.onKeyDown, true);
-    document.removeEventListener('keyup', this.onKeyUp, true);
-    window.removeEventListener('blur', this.onBlur);
-    window.removeEventListener('gamepadconnected', this.onPad);
-    if (this.padTimer !== null) clearInterval(this.padTimer);
+    // The window may have closed already, and its listeners with it
+    try {
+      this.view.document.removeEventListener('keydown', this.onKeyDown, true);
+      this.view.document.removeEventListener('keyup', this.onKeyUp, true);
+      this.view.removeEventListener('blur', this.onBlur);
+      this.view.removeEventListener('gamepadconnected', this.onPad);
+      if (this.padTimer !== null) this.view.clearInterval(this.padTimer);
+    } catch { /* closed */ }
     this.padTimer = null;
     if (this.touchArea) {
       this.touchArea.removeEventListener('pointerdown', this.onPointer);
@@ -72,7 +78,7 @@ export class EmulatorInput {
   }
 
   private typing(): boolean {
-    const el = document.activeElement as HTMLElement | null;
+    const el = this.view.document.activeElement as HTMLElement | null;
     return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
   }
 
@@ -103,14 +109,15 @@ export class EmulatorInput {
   }
 
   private watchGamepads(): void {
-    if (this.padTimer !== null || typeof navigator.getGamepads !== 'function') return;
-    this.padTimer = setInterval(() => this.pollGamepads(), 16);
+    if (this.padTimer !== null || typeof this.view.navigator.getGamepads !== 'function') return;
+    // The window's own timer: the page's slows down while it is behind the window
+    this.padTimer = this.view.setInterval(() => this.pollGamepads(), 16);
   }
 
   private pollGamepads(): void {
     let mask = 0;
     let any = false;
-    for (const pad of navigator.getGamepads()) {
+    for (const pad of this.view.navigator.getGamepads()) {
       if (!pad) continue;
       any = true;
       for (const [index, key] of GAMEPAD_BUTTONS) if (pad.buttons[index]?.pressed) mask |= key;
@@ -121,7 +128,7 @@ export class EmulatorInput {
       if (y > 0.5) mask |= GBA_KEYS.DOWN;
     }
     if (!any && this.padTimer !== null) {
-      clearInterval(this.padTimer);
+      this.view.clearInterval(this.padTimer);
       this.padTimer = null;
     }
     this.emulator.setKeys('gamepad', this.isActive() ? mask : 0);
@@ -136,7 +143,7 @@ export class EmulatorInput {
       this.onGesture();
       try { this.touchArea.setPointerCapture(e.pointerId); } catch { /* not capturable */ }
     }
-    const target = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest<HTMLElement>('[data-key]');
+    const target = (this.view.document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest<HTMLElement>('[data-key]');
     const name = target && this.touchArea.contains(target) ? target.dataset['key'] as GbaKey : undefined;
     this.pointers.set(e.pointerId, name ? GBA_KEYS[name] : 0);
     this.applyTouch();

@@ -1,6 +1,6 @@
 /**
- * The Advance Wars cartridges the emulator plays, recognized like the Pokémon ones by the
- * CRC-32 of the whole ROM. Each game links with its own variant of the Advance Wars mode.
+ * The Advance Wars cartridges, recognized like the Pokémon ones by the CRC-32 of the whole
+ * ROM. Each game links with its own variant of the Advance Wars mode.
  */
 import {GameVariant} from './link/awProtocol';
 
@@ -46,7 +46,9 @@ export function advanceWarsGame(code: string): AdvanceWarsGame | undefined {
   return GAMES[code.slice(0, 3)];
 }
 
-/** The dumps the emulator plays, for telling the player which ones they are. */
-export function advanceWarsDumps(): string[] {
-  return KNOWN_DUMPS.map(dump => dump[3]);
+/** The variant of the Advance Wars mode a cartridge header's game code links with. */
+export function advanceWarsVariant(code: string): GameVariant | undefined {
+  const game = advanceWarsGame(code);
+  if (!game) return undefined;
+  return game === 'Advance Wars 2' ? GameVariant.Aw2 : GameVariant.Aw1;
 }
